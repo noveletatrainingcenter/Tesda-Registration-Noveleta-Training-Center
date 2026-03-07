@@ -137,3 +137,27 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# React build output (CRA)
+build/
+
+# Vite cache
+node_modules/.vite/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Uploads / generated files (common in RMS)
+uploads/
+storage/
+tmp/
+
+# Local DB files (if ever used)
+*.sqlite
+*.sqlite3
+*.db
+
+release
