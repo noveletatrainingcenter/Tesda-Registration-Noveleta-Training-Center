@@ -1,3 +1,4 @@
+// backend/src/routes/auth.routes.js
 import {
   detectUser, login, logout,
   getSecurityQuestion, adminResetPassword,

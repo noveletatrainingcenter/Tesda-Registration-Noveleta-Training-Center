@@ -1,9 +1,9 @@
-import { Sun, Moon, Leaf, Bell, ChevronDown, LogOut } from 'lucide-react';
+// frontend/src/components/AppHeader.tsx
+import { Sun, Moon, Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
-import ThemeToggle from './ThemeToggle';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -23,7 +23,6 @@ export default function AppHeader({ onMenuClick }: { onMenuClick?: () => void })
   const themes = [
     { key: 'light', icon: Sun, label: 'Light' },
     { key: 'dark', icon: Moon, label: 'Dark' },
-    { key: 'green', icon: Leaf, label: 'Green' },
   ] as const;
 
   return (

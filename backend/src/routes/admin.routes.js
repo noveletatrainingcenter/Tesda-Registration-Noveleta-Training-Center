@@ -1,3 +1,4 @@
+// backend/src/routes/admin.routes.js
 import {
   getUsers, createUser, toggleUserStatus,
   getAuditLogs, getCourses, createCourse, changePassword

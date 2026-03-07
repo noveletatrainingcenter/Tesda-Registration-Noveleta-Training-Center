@@ -1,3 +1,4 @@
+backend/src/config/schema.sql
 -- =============================================
 -- TESDA Registration System - Database Schema
 -- Run this in HeidiSQL on database: tesda_registration

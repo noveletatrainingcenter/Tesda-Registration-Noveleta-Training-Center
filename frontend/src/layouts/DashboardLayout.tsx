@@ -1,3 +1,4 @@
+// frontend/src/layouts/DashboardLayout.tsx
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';

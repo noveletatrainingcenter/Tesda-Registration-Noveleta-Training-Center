@@ -1,6 +1,7 @@
+// frontend/src/store/themeStore.ts
 import { create } from 'zustand';
 
-type Theme = 'light' | 'dark' | 'green';
+type Theme = 'light' | 'dark';
 
 interface ThemeState {
   theme: Theme;

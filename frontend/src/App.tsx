@@ -1,3 +1,4 @@
+// frontend/src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
@@ -11,40 +12,30 @@ import EncoderHome from './pages/encoder/Home';
 import EncoderRegistration from './pages/encoder/Registration';
 import EncoderReports from './pages/encoder/Reports';
 
-function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
+function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 'admin' | 'encoder' }) {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (role && user?.role !== role) return <Navigate to="/" replace />;
+  if (role && user?.role !== role) return <Navigate to={user?.role === 'admin' ? '/admin' : '/encoder'} replace />;
   return <>{children}</>;
 }
 
 export default function App() {
-  useThemeStore(); // initialize theme
-  const { user, isAuthenticated } = useAuthStore();
-
+  useThemeStore(); // initialize theme on mount
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<WelcomePage />} />
-        <Route path="/login" element={
-          isAuthenticated
-            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/encoder'} replace />
-            : <LoginPage />
-        } />
+        <Route path="/login" element={<LoginPage />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={
-          <ProtectedRoute role="admin"><DashboardLayout /></ProtectedRoute>
-        }>
+        {/* Admin */}
+        <Route path="/admin" element={<ProtectedRoute role="admin"><DashboardLayout /></ProtectedRoute>}>
           <Route index element={<AdminHome />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 
-        {/* Encoder Routes */}
-        <Route path="/encoder" element={
-          <ProtectedRoute><DashboardLayout /></ProtectedRoute>
-        }>
+        {/* Encoder */}
+        <Route path="/encoder" element={<ProtectedRoute role="encoder"><DashboardLayout /></ProtectedRoute>}>
           <Route index element={<EncoderHome />} />
           <Route path="register" element={<EncoderRegistration />} />
           <Route path="reports" element={<EncoderReports />} />

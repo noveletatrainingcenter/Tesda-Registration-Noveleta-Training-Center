@@ -1,3 +1,4 @@
+// frontend/src/components/Sidebar.tsx
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, FilePlus, FileText, Settings, Users, ClipboardList, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';

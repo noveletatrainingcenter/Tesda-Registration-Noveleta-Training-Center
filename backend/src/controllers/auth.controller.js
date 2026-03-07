@@ -1,3 +1,4 @@
+// backend/src/controllers/auth.controller.js
 import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import { generateResetTicket } from '../utils/helpers.js';

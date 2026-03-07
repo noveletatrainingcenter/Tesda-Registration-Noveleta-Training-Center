@@ -1,7 +1,8 @@
+// frontend/src/pages/admin/Home.tsx
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Users, UserPlus, Calendar, TrendingUp, BookOpen } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie } from 'recharts';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 
@@ -92,9 +93,16 @@ export default function AdminHome() {
           {data?.by_course?.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={data.by_course} dataKey="count" nameKey="course" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                  {data.by_course.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
+                <Pie
+                  data={data.by_course.map((entry: any, i: number) => ({ ...entry, fill: COLORS[i % COLORS.length] }))}
+                  dataKey="count"
+                  nameKey="course"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={70}
+                  label={({ percent }) => percent !== undefined ? `${(percent * 100).toFixed(0)}%` : ''}
+                  labelLine={false}
+                />
                 <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>

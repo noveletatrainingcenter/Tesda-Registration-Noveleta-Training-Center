@@ -1,3 +1,4 @@
+// backend/src/routes/registrant.routes.js
 import {
   getRegistrants, getRegistrant,
   createRegistrant, updateRegistrant,
