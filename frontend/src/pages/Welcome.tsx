@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Shield, Users, FileText, BarChart3 } from 'lucide-react';
 
 const features = [
-  { icon: Users, label: 'Learner Registration', desc: 'Complete TESDA MIS 03-01 form digitally' },
+  { icon: Users, label: 'Learner Registration', desc: 'Complete TESDA MIS form digitally' },
   { icon: Shield, label: 'Role-based Access', desc: 'Admin & Encoder access control' },
   { icon: FileText, label: 'Digital Records', desc: 'Organized, searchable database' },
   { icon: BarChart3, label: 'Reports & Analytics', desc: 'Insights on registrations & courses' },
@@ -51,7 +51,7 @@ export default function WelcomePage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold mb-6"
             style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
             <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
-            MIS Form 03-01 — Digital Registration System
+            MIS Form Digital Registration System
           </div>
         </motion.div>
 

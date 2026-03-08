@@ -22,7 +22,7 @@ export default function EncoderHome() {
   return (
     <div className="max-w-5xl mx-auto animate-stagger">
       <div className="mb-8">
-        <h1 className="section-title text-2xl">Hello, {user?.full_name?.split(' ')[0]} 👋</h1>
+        <h1 className="section-title text-2xl">Hello, {user?.full_name} 👋</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Ready to register new learners today?</p>
       </div>
 

@@ -33,7 +33,7 @@ export default function AdminHome() {
     <div className="animate-stagger max-w-7xl mx-auto">
       {/* Greeting */}
       <div className="mb-8">
-        <h1 className="section-title text-2xl">Good day, {user?.full_name?.split(' ')[0]} 👋</h1>
+        <h1 className="section-title text-2xl">Good day, {user?.full_name} 👋</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Here's what's happening at Noveleta Training Center.</p>
       </div>
 
