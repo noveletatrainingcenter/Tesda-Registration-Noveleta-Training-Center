@@ -3,11 +3,21 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';        // ← add
 import dotenv from 'dotenv';
 import { testConnection } from './config/db.js';
-import authRoutes from './routes/auth.routes.js';
-import registrantRoutes from './routes/registrant.routes.js';
-import adminRoutes from './routes/admin.routes.js';
+
+// Shared routes
+import authRoutes from './routes/shared/auth.routes.js';
+import accountRoutes from './routes/shared/account.routes.js';
+import registrantRoutes from './routes/shared/registrant.routes.js';
+
+// Admin routes
+import userRoutes from './routes/admin/users.routes.js';
+import auditRoutes from './routes/admin/audit.routes.js';
+import courseRoutes from './routes/admin/courses.routes.js';
+import backupRoutes from './routes/admin/backup.routes.js';  // ← add
+import { loadAndStartScheduler } from './controllers/admin/backup.controller.js';
 
 dotenv.config();
 
@@ -24,11 +34,20 @@ await fastify.register(jwt, {
 });
 
 await fastify.register(cookie);
+await fastify.register(multipart, {             // ← add
+  limits: { fileSize: 50 * 1024 * 1024 },      //   50 MB cap for .sql uploads
+});
 
-// Routes
-await fastify.register(authRoutes, { prefix: '/api/auth' });
+// Shared routes
+await fastify.register(authRoutes,       { prefix: '/api/auth' });
+await fastify.register(accountRoutes,    { prefix: '/api/account' });
 await fastify.register(registrantRoutes, { prefix: '/api/registrants' });
-await fastify.register(adminRoutes, { prefix: '/api/admin' });
+
+// Admin routes
+await fastify.register(userRoutes,   { prefix: '/api/admin/users' });
+await fastify.register(auditRoutes,  { prefix: '/api/admin/audit-logs' });
+await fastify.register(courseRoutes, { prefix: '/api/admin/courses' });
+await fastify.register(backupRoutes, { prefix: '/api/admin/backups' });
 
 // Health check
 fastify.get('/api/health', async () => ({ status: 'ok', time: new Date().toISOString() }));
@@ -36,6 +55,7 @@ fastify.get('/api/health', async () => ({ status: 'ok', time: new Date().toISOSt
 // Start
 const start = async () => {
   await testConnection();
+  await loadAndStartScheduler(); // ← add this line right after testConnection
   try {
     await fastify.listen({ port: parseInt(process.env.PORT) || 3001, host: '0.0.0.0' });
     console.log('🚀 Backend running on http://localhost:3001');

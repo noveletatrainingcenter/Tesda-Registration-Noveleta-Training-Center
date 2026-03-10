@@ -1,10 +1,10 @@
-// backend/src/routes/registrant.routes.js
+// backend/src/routes/shared/registrant.routes.js
 import {
   getRegistrants, getRegistrant,
   createRegistrant, updateRegistrant,
   archiveRegistrant, getStats
-} from '../controllers/registrant.controller.js';
-import { authenticate, requireRole } from '../middleware/auth.middleware.js';
+} from '../../controllers/shared/registrant.controller.js';
+import { authenticate, requireRole } from '../../middleware/auth.middleware.js';
 
 export default async function registrantRoutes(fastify) {
   fastify.get('/stats', { preHandler: [authenticate] }, getStats);

@@ -1,3 +1,6 @@
+CREATE DATABASE IF NOT EXSTS tesda_registration;
+
+
 -- Users table
 CREATE TABLE users (
   id VARCHAR(9) PRIMARY KEY,        -- Employee ID (year + digits)
@@ -65,3 +68,24 @@ CREATE TABLE audit_logs (
   ip_address VARCHAR(50),
   created_at DATETIME DEFAULT NOW()
 );
+
+-- Courses / qualifications
+CREATE TABLE courses (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  code VARCHAR(50),
+  sector VARCHAR(100),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME DEFAULT NOW()
+);
+
+CREATE TABLE backup_settings (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value TEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO backup_settings (setting_key, setting_value) VALUES
+  ('backup_schedule', 'daily'),
+  ('backup_retention', '14'),
+  ('backup_time', '02:00');

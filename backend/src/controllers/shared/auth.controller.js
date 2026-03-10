@@ -1,7 +1,7 @@
-// backend/src/controllers/auth.controller.js
+// backend/src/controllers/shared/auth.controller.js
 import bcrypt from 'bcryptjs';
-import db from '../config/db.js';
-import { generateResetTicket } from '../utils/helpers.js';
+import db from '../../config/db.js';
+import { generateResetTicket } from '../../utils/helpers.js';
 import dayjs from 'dayjs';
 
 // Step 1: Detect user by ID / username / email
@@ -58,13 +58,13 @@ export async function login(request, reply) {
       return reply.code(401).send({ success: false, message: 'Incorrect password.' });
     }
 
-    // Update last login
     await db.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
-    // Audit log
+    // ✅ details now shows role + session length
+    const sessionLength = remember_me ? '7-day session' : '8-hour session';
     await db.execute(
-      'INSERT INTO audit_logs (user_id, user_name, action, module, ip_address) VALUES (?,?,?,?,?)',
-      [user.id, user.full_name, 'LOGIN', 'Auth', request.ip]
+      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
+      [user.id, user.full_name, 'LOGIN', 'Auth', `Logged in as ${user.role} · ${sessionLength}`, request.ip]
     );
 
     const expiresIn = remember_me ? '7d' : '8h';
@@ -87,9 +87,10 @@ export async function login(request, reply) {
 // Logout
 export async function logout(request, reply) {
   try {
+    // ✅ details now shows who logged out
     await db.execute(
-      'INSERT INTO audit_logs (user_id, user_name, action, module, ip_address) VALUES (?,?,?,?,?)',
-      [request.user.id, request.user.full_name, 'LOGOUT', 'Auth', request.ip]
+      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
+      [request.user.id, request.user.full_name, 'LOGOUT', 'Auth', `Session ended for ${request.user.role}`, request.ip]
     );
   } catch (_) {}
   return reply.send({ success: true, message: 'Logged out.' });
@@ -115,7 +116,7 @@ export async function adminResetPassword(request, reply) {
   const { email, answer, new_password } = request.body;
   try {
     const [rows] = await db.execute(
-      `SELECT id, security_answer_hash FROM users WHERE email = ? AND role = 'admin'`,
+      `SELECT id, full_name, security_answer_hash FROM users WHERE email = ? AND role = 'admin'`,
       [email]
     );
     if (!rows.length) return reply.code(404).send({ success: false, message: 'Not found.' });
@@ -125,6 +126,12 @@ export async function adminResetPassword(request, reply) {
 
     const hash = await bcrypt.hash(new_password, 10);
     await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hash, rows[0].id]);
+
+    // ✅ log the password reset
+    await db.execute(
+      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
+      [rows[0].id, rows[0].full_name, 'RESET_PASSWORD', 'Auth', 'Password reset via security question', request.ip]
+    );
 
     return reply.send({ success: true, message: 'Password reset successfully.' });
   } catch (err) {
@@ -152,7 +159,7 @@ export async function generateEncoderTicket(request, reply) {
 
     await db.execute(
       'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
-      [request.user.id, request.user.full_name, 'GENERATE_RESET_TICKET', 'Auth', `Ticket for encoder: ${rows[0].full_name}`, request.ip]
+      [request.user.id, request.user.full_name, 'GENERATE_RESET_TICKET', 'Auth', `Reset ticket issued for encoder: ${rows[0].full_name}`, request.ip]
     );
 
     return reply.send({ success: true, ticket, encoder_name: rows[0].full_name, expires_in: '24 hours' });
@@ -166,7 +173,7 @@ export async function useResetTicket(request, reply) {
   const { identifier, ticket, new_password } = request.body;
   try {
     const [rows] = await db.execute(
-      `SELECT id FROM users
+      `SELECT id, full_name FROM users
        WHERE (id = ? OR username = ?) AND reset_ticket = ?
        AND ticket_expires_at > NOW() AND ticket_used = FALSE AND role = 'encoder'`,
       [identifier, identifier, ticket]
@@ -179,6 +186,12 @@ export async function useResetTicket(request, reply) {
     await db.execute(
       'UPDATE users SET password_hash = ?, reset_ticket = NULL, ticket_used = TRUE WHERE id = ?',
       [hash, rows[0].id]
+    );
+
+    // ✅ log the ticket use
+    await db.execute(
+      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
+      [rows[0].id, rows[0].full_name, 'RESET_PASSWORD', 'Auth', 'Password reset via one-time ticket', request.ip]
     );
 
     return reply.send({ success: true, message: 'Password reset successfully. You can now login.' });

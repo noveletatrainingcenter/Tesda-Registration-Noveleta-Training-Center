@@ -1,10 +1,10 @@
-// backend/src/routes/auth.routes.js
+// backend/src/routes/shared/auth.routes.js
 import {
   detectUser, login, logout,
   getSecurityQuestion, adminResetPassword,
   generateEncoderTicket, useResetTicket
-} from '../controllers/auth.controller.js';
-import { authenticate, requireRole } from '../middleware/auth.middleware.js';
+} from '../../controllers/shared/auth.controller.js';
+import { authenticate, requireRole } from '../../middleware/auth.middleware.js';
 
 export default async function authRoutes(fastify) {
   // Public

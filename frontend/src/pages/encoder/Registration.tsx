@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, CheckCircle, User, MapPin, Briefcase, GraduationCap, Tag } from 'lucide-react';
-import api from '../../lib/api';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 const CIVIL_STATUS = ['Single', 'Married', 'Separated/Divorced/Annulled', 'Widow/er', 'Common Law/Live-in'];
 const EMP_STATUS = ['Wage-Employed', 'Underemployed', 'Self-Employed', 'Unemployed'];
@@ -17,10 +18,10 @@ const SCHOLARSHIP = ['TWSP', 'PESFA', 'STEP', 'Regular', 'None/Not Applicable'];
 
 const steps = [
   { label: 'Personal Info', icon: User },
-  { label: 'Address', icon: MapPin },
-  { label: 'Employment', icon: Briefcase },
-  { label: 'Education', icon: GraduationCap },
-  { label: 'Classification', icon: Tag },
+  { label: 'Address',       icon: MapPin },
+  { label: 'Employment',    icon: Briefcase },
+  { label: 'Education',     icon: GraduationCap },
+  { label: 'Classification',icon: Tag },
 ];
 
 const empty = {
@@ -38,7 +39,9 @@ const empty = {
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label className="label">{label}{required && <span style={{ color: 'var(--accent)' }}> *</span>}</label>
+      <label className="label">
+        {label}{required && <span className="text-accent"> *</span>}
+      </label>
       {children}
     </div>
   );
@@ -46,7 +49,7 @@ function Field({ label, children, required }: { label: string; children: React.R
 
 function Sel({ value, onChange, options, placeholder }: any) {
   return (
-    <select className="input-base" value={value} onChange={e => onChange(e.target.value)} style={{ cursor: 'pointer' }}>
+    <select className="input-base" value={value} onChange={e => onChange(e.target.value)}>
       <option value="">{placeholder || '— Select —'}</option>
       {options.map((o: string) => <option key={o} value={o}>{o}</option>)}
     </select>
@@ -81,20 +84,30 @@ export default function EncoderRegistration() {
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="section-title">New Learner Registration</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>TESDA MIS Form 03-01 — Learners Profile Form</p>
+        <p className="text-sm mt-1 text-text-muted">TESDA MIS Form 03-01 — Learners Profile Form</p>
       </div>
 
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
         {steps.map((s, i) => (
           <div key={s.label} className="flex items-center gap-2 shrink-0">
-            <button onClick={() => i < step && setStep(i)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${i === step ? 'btn-primary' : i < step ? 'btn-ghost' : 'opacity-40 cursor-default'}`}
-              style={i < step ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : {}}>
+            <button
+              onClick={() => i < step && setStep(i)}
+              className={clsx(
+                'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all',
+                i === step
+                  ? 'btn-primary'
+                  : i < step
+                  ? 'btn-ghost text-accent border-accent'
+                  : 'opacity-40 cursor-default btn-ghost'
+              )}
+            >
               {i < step ? <CheckCircle size={14} /> : <s.icon size={14} />}
               {s.label}
             </button>
-            {i < steps.length - 1 && <div className="w-6 h-px" style={{ background: 'var(--border)' }} />}
+            {i < steps.length - 1 && (
+              <div className="w-6 h-px bg-border" />
+            )}
           </div>
         ))}
       </div>
@@ -118,13 +131,15 @@ export default function EncoderRegistration() {
                   <div className="flex gap-3 mt-2">
                     {['Male', 'Female'].map(s => (
                       <label key={s} className="checkbox-label">
-                        <input type="radio" name="sex" value={s} checked={form.sex === s} onChange={() => set('sex', s)} style={{ accentColor: 'var(--accent)' }} />
+                        <input type="radio" name="sex" value={s} checked={form.sex === s} onChange={() => set('sex', s)} />
                         {s}
                       </label>
                     ))}
                   </div>
                 </Field>
-                <Field label="Civil Status"><Sel value={form.civil_status} onChange={(v: string) => set('civil_status', v)} options={CIVIL_STATUS} /></Field>
+                <Field label="Civil Status">
+                  <Sel value={form.civil_status} onChange={(v: string) => set('civil_status', v)} options={CIVIL_STATUS} />
+                </Field>
                 <Field label="Contact Number"><input {...inp('contact_no')} placeholder="09xxxxxxxxx" /></Field>
               </div>
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -154,7 +169,9 @@ export default function EncoderRegistration() {
                 <Field label="District"><input {...inp('address_district')} placeholder="1st District" /></Field>
                 <Field label="City/Municipality"><input {...inp('address_city')} placeholder="Noveleta" /></Field>
                 <Field label="Province"><input {...inp('address_province')} placeholder="Cavite" /></Field>
-                <div className="md:col-span-2"><Field label="Region"><Sel value={form.address_region} onChange={(v: string) => set('address_region', v)} options={REGIONS} /></Field></div>
+                <div className="md:col-span-2">
+                  <Field label="Region"><Sel value={form.address_region} onChange={(v: string) => set('address_region', v)} options={REGIONS} /></Field>
+                </div>
               </div>
               <div className="form-section-title mt-6"><User size={16} />Parent / Guardian</div>
               <div className="grid grid-cols-2 gap-4">
@@ -174,18 +191,21 @@ export default function EncoderRegistration() {
                   <div className="flex flex-col gap-2 mt-1">
                     {EMP_STATUS.map(s => (
                       <label key={s} className="checkbox-label">
-                        <input type="radio" name="emp_status" value={s} checked={form.employment_status === s} onChange={() => set('employment_status', s)} style={{ accentColor: 'var(--accent)' }} />
+                        <input type="radio" name="emp_status" value={s} checked={form.employment_status === s} onChange={() => set('employment_status', s)} />
                         {s}
                       </label>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="label">Employment Type <span className="text-xs font-normal normal-case" style={{ color: 'var(--text-muted)' }}>(if Wage-Employed or Underemployed)</span></label>
+                  <label className="label">
+                    Employment Type{' '}
+                    <span className="text-xs font-normal normal-case text-text-muted">(if Wage-Employed or Underemployed)</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2 mt-1">
                     {EMP_TYPE.map(t => (
                       <label key={t} className="checkbox-label">
-                        <input type="radio" name="emp_type" value={t} checked={form.employment_type === t} onChange={() => set('employment_type', t)} style={{ accentColor: 'var(--accent)' }} />
+                        <input type="radio" name="emp_type" value={t} checked={form.employment_type === t} onChange={() => set('employment_type', t)} />
                         {t}
                       </label>
                     ))}
@@ -202,7 +222,7 @@ export default function EncoderRegistration() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6">
                 {EDU.map(e => (
                   <label key={e} className="checkbox-label">
-                    <input type="radio" name="edu" value={e} checked={form.educational_attainment === e} onChange={() => set('educational_attainment', e)} style={{ accentColor: 'var(--accent)' }} />
+                    <input type="radio" name="edu" value={e} checked={form.educational_attainment === e} onChange={() => set('educational_attainment', e)} />
                     <span className="text-xs">{e}</span>
                   </label>
                 ))}
@@ -226,28 +246,29 @@ export default function EncoderRegistration() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-1 mb-6">
                 {CLASSIFICATIONS.map(c => (
                   <label key={c} className="checkbox-label">
-                    <input type="radio" name="class" value={c} checked={form.client_classification === c} onChange={() => set('client_classification', c)} style={{ accentColor: 'var(--accent)' }} />
+                    <input type="radio" name="class" value={c} checked={form.client_classification === c} onChange={() => set('client_classification', c)} />
                     <span className="text-xs">{c}</span>
                   </label>
                 ))}
               </div>
 
-              <div className="form-section-title mt-4" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 16 }}>
+              <div className="form-section-title mt-4 border-b border-border pb-3 mb-4">
                 Privacy Consent and Disclaimer
               </div>
-              <div className="p-4 rounded-xl mb-4 text-xs leading-relaxed" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
+              <div className="p-4 rounded-xl mb-4 text-xs leading-relaxed bg-bg-input text-text-secondary">
                 I hereby attest that I have read and understood the Privacy Notice of TESDA through its website (https://www.tesda.gov.ph) and thereby giving my consent in the processing of my personal information indicated in this Learners Profile. The processing includes scholarships, employment, survey, and all other related TESDA programs that may be beneficial to my qualifications.
               </div>
               <label className="checkbox-label">
-                <input type="checkbox" checked={form.privacy_consent} onChange={e => set('privacy_consent', e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>I Agree to the Privacy Consent</span>
+                <input type="checkbox" checked={form.privacy_consent} onChange={e => set('privacy_consent', e.target.checked)} />
+                <span className="font-medium text-text-primary">I Agree to the Privacy Consent</span>
               </label>
             </motion.div>
           )}
+
         </AnimatePresence>
 
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-8 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+        {/* Navigation */}
+        <div className="flex justify-between border-t border-border mt-8 pt-4">
           <button className="btn-ghost" disabled={step === 0} onClick={() => setStep(s => s - 1)}>
             <ChevronLeft size={15} /> Previous
           </button>

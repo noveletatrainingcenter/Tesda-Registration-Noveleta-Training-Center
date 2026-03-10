@@ -1,6 +1,24 @@
 /* frontend/src/index.css */
 @import "tailwindcss";
 
+@theme {
+  --color-accent:          var(--accent);
+  --color-accent-hover:    var(--accent-hover);
+  --color-accent-light:    var(--accent-light);
+  --color-accent-text:     var(--accent-text);
+  --color-bg-primary:      var(--bg-primary);
+  --color-bg-secondary:    var(--bg-secondary);
+  --color-bg-card:         var(--bg-card);
+  --color-bg-input:        var(--bg-input);
+  --color-bg-sidebar:      var(--bg-sidebar);
+  --color-bg-sidebar-hover:var(--bg-sidebar-hover);
+  --color-text-primary:    var(--text-primary);
+  --color-text-secondary:  var(--text-secondary);
+  --color-text-muted:      var(--text-muted);
+  --color-text-sidebar:    var(--text-sidebar);
+  --color-border:          var(--border);
+}
+
 /* ============ THEME VARIABLES ============ */
 :root,
 [data-theme="light"] {
@@ -46,15 +64,8 @@
 }
 
 /* ============ BASE ============ */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
   font-family: 'DM Sans', sans-serif;
@@ -106,9 +117,7 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.input-base::placeholder {
-  color: var(--text-muted);
-}
+.input-base::placeholder { color: var(--text-muted); }
 
 select.input-base {
   cursor: pointer;
@@ -145,14 +154,8 @@ select.input-base {
   box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .btn-ghost {
   display: inline-flex;
@@ -180,10 +183,7 @@ select.input-base {
   border-color: var(--accent);
 }
 
-.btn-ghost:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+.btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ============ LABEL ============ */
 .label {
@@ -244,10 +244,7 @@ select.input-base {
 }
 
 /* ============ TABLE ============ */
-.table-container {
-  width: 100%;
-  overflow-x: auto;
-}
+.table-container { width: 100%; overflow-x: auto; }
 
 .data-table {
   width: 100%;
@@ -276,10 +273,7 @@ select.input-base {
   vertical-align: middle;
 }
 
-.data-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
+.data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover td {
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
@@ -296,29 +290,22 @@ select.input-base {
   white-space: nowrap;
 }
 
-.badge-green {
-  background: var(--accent-light);
-  color: var(--accent-text);
-}
+.badge-green  { background: var(--accent-light); color: var(--accent-text); }
+.badge-blue   { background: #dbeafe; color: #1e40af; }
+.badge-orange { background: #fef3c7; color: #92400e; }
+.badge-red    { background: #fee2e2; color: #991b1b; }
 
-.badge-blue {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.badge-orange {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.badge-red {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-[data-theme="dark"] .badge-blue { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-blue   { background: #1e3a5f; color: #93c5fd; }
 [data-theme="dark"] .badge-orange { background: #3d2800; color: #fcd34d; }
-[data-theme="dark"] .badge-red { background: #3b0a0a; color: #fca5a5; }
+[data-theme="dark"] .badge-red    { background: #3b0a0a; color: #fca5a5; }
+
+/* ============ AUDIT BADGES ============ */
+.badge-audit-delete { background: #fee2e2; color: #991b1b; }
+.badge-audit-create { background: var(--accent-light); color: var(--accent-text); }
+.badge-audit-update { background: #fef3c7; color: #92400e; }
+
+[data-theme="dark"] .badge-audit-delete { background: #3b0a0a; color: #fca5a5; }
+[data-theme="dark"] .badge-audit-update { background: #3d2800; color: #fcd34d; }
 
 /* ============ FORM SECTIONS ============ */
 .form-section {
@@ -367,7 +354,7 @@ select.input-base {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,0.5);
   backdrop-filter: blur(4px);
   z-index: 50;
   display: flex;
@@ -404,10 +391,40 @@ select.input-base {
   opacity: 0.35;
 }
 
+/* ============ WELCOME ORBS ============ */
+.welcome-orb-1 {
+  position: absolute; top: 25%; left: 25%;
+  width: 384px; height: 384px; border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 15%, transparent), transparent 70%);
+  filter: blur(40px);
+  animation: float 8s ease-in-out infinite;
+}
+
+.welcome-orb-2 {
+  position: absolute; bottom: 25%; right: 25%;
+  width: 288px; height: 288px; border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
+  filter: blur(40px);
+  animation: float 10s ease-in-out infinite reverse;
+}
+
+/* ============ SKELETON ============ */
+.skeleton {
+  height: 16px;
+  border-radius: 4px;
+  width: 75%;
+  background: var(--bg-input);
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-wide { width: 80%; }
+
 /* ============ ANIMATIONS ============ */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeIn {
@@ -416,8 +433,18 @@ select.input-base {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px);   }
+  0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }
 
 .animate-stagger > * {
@@ -431,7 +458,36 @@ select.input-base {
 .animate-stagger > *:nth-child(5) { animation-delay: 0.25s; }
 .animate-stagger > *:nth-child(6) { animation-delay: 0.30s; }
 
-/* ============ LAYOUT HELPERS ============ */
+/* ============ THEME TOGGLE ============ */
+.theme-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+}
+
+.theme-toggle-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.theme-toggle-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* ============ LAYOUT ============ */
 #root {
   display: flex;
   flex-direction: column;

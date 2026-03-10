@@ -1,6 +1,6 @@
 // backend/src/controllers/registrant.controllers.js
-import db from '../config/db.js';
-import { generateULIPlaceholder, calculateAge, sanitize } from '../utils/helpers.js';
+import db from '../../config/db.js';
+import { generateULIPlaceholder, calculateAge, sanitize } from '../../utils/helpers.js';
 
 // Get all registrants (paginated)
 export async function getRegistrants(request, reply) {
