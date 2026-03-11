@@ -9,8 +9,9 @@ import { useAuthStore } from '@/store/authStore';
 import clsx from 'clsx';
 
 const adminNav = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/admin/reports', icon: FileText, label: 'Reports' },
+  { to: '/admin',          icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/admin/register', icon: FilePlus,         label: 'New Registration' },
+  { to: '/admin/reports',  icon: FileText,          label: 'Reports' },
 ];
 
 const encoderNav = [
@@ -22,7 +23,7 @@ const encoderNav = [
 const adminSettingsNav = [
   { to: '/admin/users',   icon: Users,          label: 'User Management' },
   { to: '/admin/audit',   icon: ScrollText,      label: 'Audit Trail' },
-  { to: '/admin/backup',  icon: DatabaseBackup,  label: 'Backup & Restore' }, // ← add
+  { to: '/admin/backup',  icon: DatabaseBackup,  label: 'Backup & Restore' },
 ];
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {

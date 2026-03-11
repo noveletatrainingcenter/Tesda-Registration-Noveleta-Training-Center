@@ -8,7 +8,7 @@ import cron from 'node-cron';
 import db from '../../config/db.js';
 
 const execAsync = promisify(exec);
-const BACKUP_DIR = path.resolve(process.cwd(), 'backups', 'Tesda-Registration-Backups');
+const BACKUP_DIR = path.resolve(process.cwd(), process.env.BACKUP_DIR || '../backups/Tesda-Registration-Backups');
 
 // Ensure backup dir exists
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -35,6 +35,18 @@ function makeFilename(type = 'manual') {
   return type === 'auto'
     ? `backup_${ts}.sql`
     : `backup_${ts}_manual.sql`;
+}
+
+// ── Safe audit log helper — never throws ───────────────────────────────────
+async function auditLog(req, action, details) {
+  try {
+    await db.execute(
+      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
+      [req.user?.id ?? null, req.user?.full_name ?? 'System', action, 'Backup', details, req.ip ?? null]
+    );
+  } catch (err) {
+    console.error('⚠️  Audit log failed:', err.message);
+  }
 }
 
 // ── List backups ────────────────────────────────────────────────────────────
@@ -64,21 +76,22 @@ export async function listBackups(request, reply) {
 // ── Create backup ───────────────────────────────────────────────────────────
 export async function createBackup(request, reply) {
   const { type = 'manual' } = request.body || {};
-  const db_cfg   = getDbConfig();
-  const filename = makeFilename(type);
-  const outPath  = path.join(BACKUP_DIR, filename);
+  const db_cfg    = getDbConfig();
+  const filename  = makeFilename(type);
+  const outPath   = path.join(BACKUP_DIR, filename);
   const mysqldump = path.join(db_cfg.bin, 'mysqldump');
-  const pwFlag   = db_cfg.password ? `-p${db_cfg.password}` : '';
-  const cmd      = `"${mysqldump}" -h ${db_cfg.host} -u ${db_cfg.user} ${pwFlag} ${db_cfg.name} > "${outPath}"`;
+  const pwFlag    = db_cfg.password ? `-p${db_cfg.password}` : '';
+  const cmd = `"${mysqldump}" -h ${db_cfg.host} -u ${db_cfg.user} ${pwFlag} --result-file="${outPath}" ${db_cfg.name}`;
+
+  console.log('📁 BACKUP_DIR:', BACKUP_DIR);
+  console.log('📁 outPath:', outPath);
+  console.log('💻 cmd:', cmd);
 
   try {
     await execAsync(cmd, { shell: true });
     const stat = fs.statSync(outPath);
 
-    await db.execute(
-      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
-      [request.user.id, request.user.full_name, 'CREATE_BACKUP', 'Backup', `Created: ${filename}`, request.ip]
-    );
+    await auditLog(request, 'CREATE_BACKUP', `Created: ${filename}`);
 
     return reply.code(201).send({
       success: true,
@@ -126,10 +139,7 @@ export async function deleteBackup(request, reply) {
 
   try {
     fs.unlinkSync(filepath);
-    await db.execute(
-      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
-      [request.user.id, request.user.full_name, 'DELETE_BACKUP', 'Backup', `Deleted: ${filename}`, request.ip]
-    );
+    await auditLog(request, 'DELETE_BACKUP', `Deleted: ${filename}`);
     return reply.send({ success: true, message: 'Backup deleted.' });
   } catch (err) {
     return reply.code(500).send({ success: false, message: 'Failed to delete backup.' });
@@ -143,15 +153,15 @@ export async function restoreBackup(request, reply) {
     return reply.code(400).send({ success: false, message: 'A valid .sql file is required.' });
   }
 
-  const db_cfg   = getDbConfig();
+  const db_cfg    = getDbConfig();
   const mysqldump = path.join(db_cfg.bin, 'mysqldump');
-  const mysql    = path.join(db_cfg.bin, 'mysql');
-  const pwFlag   = db_cfg.password ? `-p${db_cfg.password}` : '';
+  const mysql     = path.join(db_cfg.bin, 'mysql');
+  const pwFlag    = db_cfg.password ? `-p${db_cfg.password}` : '';
 
   // Auto-backup before restore for safety
   const safeName = makeFilename('auto').replace('.sql', '_pre-restore.sql');
   const safePath = path.join(BACKUP_DIR, safeName);
-  await execAsync(`"${mysqldump}" -h ${db_cfg.host} -u ${db_cfg.user} ${pwFlag} ${db_cfg.name} > "${safePath}"`, { shell: true }).catch(() => {});
+  await execAsync(`"${mysqldump}" -h ${db_cfg.host} -u ${db_cfg.user} ${pwFlag} --result-file="${safePath}" ${db_cfg.name}`, { shell: true }).catch(() => {});
 
   // Save uploaded file to temp
   const tmpPath = path.join(BACKUP_DIR, `tmp_restore_${Date.now()}.sql`);
@@ -164,10 +174,8 @@ export async function restoreBackup(request, reply) {
     await execAsync(cmd, { shell: true });
     fs.unlinkSync(tmpPath);
 
-    await db.execute(
-      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
-      [request.user.id, request.user.full_name, 'RESTORE_BACKUP', 'Backup', `Restored from: ${data.filename}`, request.ip]
-    );
+    // Audit log is called BEFORE the DB connection could be affected by the restore
+    await auditLog(request, 'RESTORE_BACKUP', `Restored from: ${data.filename}`);
 
     return reply.send({ success: true, message: 'Database restored successfully.' });
   } catch (err) {
@@ -186,7 +194,7 @@ async function runScheduledBackup() {
   const pwFlag    = db_cfg.password ? `-p${db_cfg.password}` : '';
 
   try {
-    await execAsync(`"${mysqldump}" -h ${db_cfg.host} -u ${db_cfg.user} ${pwFlag} ${db_cfg.name} > "${outPath}"`, { shell: true });
+    await execAsync(`"${mysqldump}" -h ${db_cfg.host} -u ${db_cfg.user} ${pwFlag} --result-file="${outPath}" ${db_cfg.name}`, { shell: true });
     console.log(`✅ Scheduled backup created: ${filename}`);
 
     // Enforce retention

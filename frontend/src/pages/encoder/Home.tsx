@@ -10,11 +10,11 @@ export default function EncoderHome() {
   const { user } = useAuthStore();
   const { data } = useQuery({
     queryKey: ['stats'],
-    queryFn: () => api.get('/registrants/stats').then(r => r.data.stats),
+    queryFn: () => api.get('/registrations/stats').then(r => r.data.stats),
   });
 
   const cards = [
-    { label: 'Total Registrants', value: data?.total ?? '—', icon: Users,      color: '#22c55e' },
+    { label: 'Total Registrations', value: data?.total ?? '—', icon: Users,      color: '#22c55e' },
     { label: 'Encoded Today',     value: data?.today ?? '—', icon: TrendingUp, color: '#3b82f6' },
     { label: 'This Month',        value: data?.this_month ?? '—', icon: FileText, color: '#f59e0b' },
   ];

@@ -13,11 +13,11 @@ export default function AdminHome() {
   const { user } = useAuthStore();
   const { data, isLoading } = useQuery({
     queryKey: ['stats'],
-    queryFn: () => api.get('/registrants/stats').then(r => r.data.stats),
+    queryFn: () => api.get('/registrations/stats').then(r => r.data.stats),
   });
 
   const statCards = [
-    { label: 'Total Registrants', value: data?.total ?? '—',             icon: Users,    color: '#22c55e' },
+    { label: 'Total Registrations', value: data?.total ?? '—',             icon: Users,    color: '#22c55e' },
     { label: 'Registered Today',  value: data?.today ?? '—',             icon: UserPlus, color: '#3b82f6' },
     { label: 'This Month',        value: data?.this_month ?? '—',        icon: Calendar, color: '#f59e0b' },
     { label: 'Active Courses',    value: data?.by_course?.length ?? '—', icon: BookOpen, color: '#8b5cf6' },

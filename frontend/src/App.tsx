@@ -10,7 +10,7 @@ import UserManagement from './pages/admin/Settings/UserManagement';
 import BackupRestore from './pages/admin/Settings/Backup&Restore';
 import AuditTrail from './pages/admin/Settings/AuditTrail';
 import EncoderHome from './pages/encoder/Home';
-import EncoderRegistration from './pages/encoder/Registration';
+import Registration from './pages/shared/Registration';
 import Reports from './pages/shared/Reports';
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 'admin' | 'encoder' }) {
@@ -22,7 +22,7 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 
 }
 
 export default function App() {
-  useThemeStore(); // initialize theme on mount
+  useThemeStore();
   return (
     <BrowserRouter>
       <Routes>
@@ -39,10 +39,13 @@ export default function App() {
           }
         >
           <Route index element={<AdminHome />} />
+          <Route path="register" element={<Registration />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="reports/:id" element={<Reports />} />
+          <Route path="reports/:id/edit" element={<Registration />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="audit" element={<AuditTrail />} />
-          <Route path="backup"  element={<BackupRestore />} />
+          <Route path="backup" element={<BackupRestore />} />
         </Route>
 
         {/* Encoder */}
@@ -55,8 +58,9 @@ export default function App() {
           }
         >
           <Route index element={<EncoderHome />} />
-          <Route path="register" element={<EncoderRegistration />} />
+          <Route path="register" element={<Registration />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="reports/:id" element={<Reports />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

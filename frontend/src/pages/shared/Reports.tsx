@@ -2,49 +2,147 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Search, Eye, Archive, Filter, RefreshCw, FilePlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Search, Eye, Archive, Filter, RefreshCw, FilePlus, ArrowLeft, Pencil } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 
 export default function Reports() {
-  const user = useAuthStore(state => state.user);
-  const isAdmin = user?.role === 'admin';
+  const navigate = useNavigate();
+  const { id }   = useParams();
+  const user     = useAuthStore(state => state.user);
+  const isAdmin  = user?.role === 'admin';
 
   const [search, setSearch] = useState('');
   const [page, setPage]     = useState(1);
   const [course, setCourse] = useState('');
+  const [confirmArchiveId, setConfirmArchiveId] = useState<number | null>(null);
 
+  // ── List query (only runs on list view) ──────────────────────────────────
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['registrants', page, search, course],
+    queryKey: ['registrations', page, search, course],
     queryFn: () =>
-      api.get('/registrants', { params: { page, limit: 15, search, course } }).then(r => r.data),
+      api.get('/registrations', { params: { page, limit: 15, search, course } }).then(r => r.data),
     staleTime: 10000,
+    enabled: !id,
   });
 
-  // Only fetch courses for admin (used in the course filter dropdown)
   const { data: coursesData } = useQuery({
     queryKey: ['courses'],
     queryFn: () => api.get('/admin/courses').then(r => r.data.data),
     enabled: isAdmin,
   });
 
-  async function handleArchive(id: number, name: string) {
-    if (!confirm(`Archive ${name}?`)) return;
+  // ── Single record query (only runs on detail view) ────────────────────────
+  const { data: single, isLoading: singleLoading } = useQuery({
+    queryKey: ['registration', id],
+    queryFn: () => api.get(`/registrations/${id}`).then(r => r.data.data),
+    enabled: !!id,
+  });
+
+  async function handleArchive(rid: number) {
     try {
-      await api.patch(`/registrants/${id}/archive`);
-      toast.success('Registrant archived.');
+      await api.patch(`/registrations/${rid}/archive`);
+      toast.success('Registration archived.');
+      setConfirmArchiveId(null);
       refetch();
     } catch {
       toast.error('Failed to archive.');
     }
   }
 
-  const registrants = data?.data  || [];
-  const total       = data?.total || 0;
-  const pages       = data?.pages || 1;
+  const registrations = data?.data  || [];
+  const total         = data?.total || 0;
+  const pages         = data?.pages || 1;
 
+  // ── DETAIL VIEW ───────────────────────────────────────────────────────────
+  if (id) {
+    if (singleLoading || !single) {
+      return (
+        <div className="max-w-4xl mx-auto">
+          <div className="skeleton h-10 w-48 mb-6 rounded-xl" />
+          <div className="card p-6 grid grid-cols-2 md:grid-cols-3 gap-6">
+            {[...Array(12)].map((_, i) => <div key={i} className="skeleton h-8 rounded-lg" />)}
+          </div>
+        </div>
+      );
+    }
+
+    const r = single;
+    const fields: [string, string | number | null | undefined][] = [
+      ['Course / Qualification', r.course_qualification],
+      ['Scholarship',            r.scholarship_type],
+      ['Sex',                    r.sex],
+      ['Civil Status',           r.civil_status],
+      ['Contact No.',            r.contact_no],
+      ['Email',                  r.email],
+      ['Nationality',            r.nationality],
+      ['Employment Status',      r.employment_status],
+      ['Employment Type',        r.employment_type],
+      ['Birthdate',              r.birth_month && r.birth_day && r.birth_year ? `${r.birth_month} ${r.birth_day}, ${r.birth_year}` : null],
+      ['Age',                    r.age],
+      ['Birthplace',             [r.birthplace_city, r.birthplace_province, r.birthplace_region].filter(Boolean).join(', ')],
+      ['Region',                 r.address_region],
+      ['Province',               r.address_province],
+      ['City / Municipality',    r.address_city],
+      ['Barangay',               r.address_barangay],
+      ['Street',                 r.address_street],
+      ['Subdivision',            r.address_subdivision],
+      ['Educational Attainment', r.educational_attainment],
+      ['Parent / Guardian',      r.parent_guardian_name],
+      ['Guardian Address',       r.parent_guardian_address],
+      ['Client Classification',  r.client_classification],
+      ['Disability',             r.has_disability ? `${r.disability_type || '—'} · ${r.disability_cause || '—'}` : 'None'],
+      ['Privacy Consent',        r.privacy_consent ? 'Agreed' : 'Disagreed'],
+      ['Encoded By',             r.encoder_name],
+      ['Date Registered',        new Date(r.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })],
+    ];
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => navigate(-1)} className="btn-ghost text-sm">
+            <ArrowLeft size={14} /> Back
+          </button>
+          <div className="flex-1">
+            <h1 className="section-title">
+              {r.last_name}, {r.first_name} {r.middle_name ? r.middle_name[0] + '.' : ''}
+              {r.extension_name ? ` ${r.extension_name}` : ''}
+            </h1>
+            <p className="text-xs text-text-muted font-mono mt-0.5">{r.uli_number}</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => navigate(`/admin/reports/${id}/edit`)}
+              className="btn-primary text-sm"
+            >
+              <Pencil size={13} /> Edit
+            </button>
+          )}
+        </div>
+
+        {/* Fields grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-6 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5"
+        >
+          {fields.map(([label, value]) => (
+            <div key={label}>
+              <div className="label text-xs mb-0.5">{label}</div>
+              <div className="text-sm text-text-primary font-medium">
+                {value || <span className="text-text-muted font-normal">—</span>}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── LIST VIEW ─────────────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto">
 
@@ -57,7 +155,7 @@ export default function Reports() {
           <p className="text-sm mt-1 text-text-muted">
             {isAdmin
               ? `All learner registrations · ${total} total`
-              : `${total} total registrants`}
+              : `${total} total registrations`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -85,7 +183,6 @@ export default function Reports() {
           />
         </div>
 
-        {/* Course filter — admin only */}
         {isAdmin && (
           <div className="relative">
             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -135,11 +232,11 @@ export default function Reports() {
                     ))}
                   </tr>
                 ))
-              ) : registrants.length === 0 ? (
+              ) : registrations.length === 0 ? (
                 <tr>
                   <td colSpan={isAdmin ? 9 : 8} className="text-center py-14">
                     <div className="text-4xl mb-3">📋</div>
-                    <div className="text-xs text-text-muted">No registrants found.</div>
+                    <div className="text-xs text-text-muted">No registrations found.</div>
                     {!isAdmin && (
                       <div className="mt-2">
                         <Link to="/encoder/register" className="text-sm text-accent hover:underline">
@@ -149,7 +246,7 @@ export default function Reports() {
                     )}
                   </td>
                 </tr>
-              ) : registrants.map((r: any) => (
+              ) : registrations.map((r: any) => (
                 <tr key={r.id}>
                   <td>
                     <div className="font-semibold text-sm text-text-primary">
@@ -181,17 +278,37 @@ export default function Reports() {
                       <button
                         title="View"
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors"
+                        onClick={() => navigate(isAdmin ? `/admin/reports/${r.id}` : `/encoder/reports/${r.id}`)}
                       >
                         <Eye size={14} />
                       </button>
                       {isAdmin && (
-                        <button
-                          title="Archive"
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors"
-                          onClick={() => handleArchive(r.id, `${r.last_name}, ${r.first_name}`)}
-                        >
-                          <Archive size={14} />
-                        </button>
+                        confirmArchiveId === r.id ? (
+                          <>
+                            <button
+                              title="Cancel"
+                              className="px-2 h-7 rounded-lg text-xs font-medium btn-ghost transition-colors"
+                              onClick={() => setConfirmArchiveId(null)}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              title="Confirm Archive"
+                              className="px-2 h-7 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white transition-colors"
+                              onClick={() => handleArchive(r.id)}
+                            >
+                              Confirm
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            title="Archive"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors"
+                            onClick={() => setConfirmArchiveId(r.id)}
+                          >
+                            <Archive size={14} />
+                          </button>
+                        )
                       )}
                     </div>
                   </td>

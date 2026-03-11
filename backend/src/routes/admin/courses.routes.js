@@ -3,6 +3,8 @@ import { getCourses, createCourse } from '../../controllers/admin/courses.contro
 import { authenticate, requireRole } from '../../middleware/auth.middleware.js';
 
 export default async function courseRoutes(fastify) {
-  fastify.get('/', { preHandler: [authenticate] }, getCourses);
-  fastify.post('/', { preHandler: [requireRole('admin')] }, createCourse);
+  fastify.get('/',  { preHandler: [authenticate] }, getCourses);
+
+  // FIX: added `authenticate` before requireRole — requireRole needs req.user to exist first
+  fastify.post('/', { preHandler: [authenticate, requireRole('admin')] }, createCourse);
 }
