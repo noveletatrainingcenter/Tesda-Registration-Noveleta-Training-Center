@@ -10,7 +10,8 @@ import UserManagement from './pages/admin/Settings/UserManagement';
 import BackupRestore from './pages/admin/Settings/Backup&Restore';
 import AuditTrail from './pages/admin/Settings/AuditTrail';
 import EncoderHome from './pages/encoder/Home';
-import Registration from './pages/shared/Registration';
+import Applicants from './pages/shared/Applicants';
+import Courses from './pages/shared/Courses';
 import Reports from './pages/shared/Reports';
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 'admin' | 'encoder' }) {
@@ -39,13 +40,13 @@ export default function App() {
           }
         >
           <Route index element={<AdminHome />} />
-          <Route path="register" element={<Registration />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="reports/:id" element={<Reports />} />
-          <Route path="reports/:id/edit" element={<Registration />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="audit" element={<AuditTrail />} />
-          <Route path="backup" element={<BackupRestore />} />
+          <Route path="applicants"     element={<Applicants />} />
+          <Route path="applicants/:id" element={<Applicants />} />
+          <Route path="courses"        element={<Courses />} />
+          <Route path="reports"        element={<Reports />} />
+          <Route path="users"          element={<UserManagement />} />
+          <Route path="audit"          element={<AuditTrail />} />
+          <Route path="backup"         element={<BackupRestore />} />
         </Route>
 
         {/* Encoder */}
@@ -58,9 +59,10 @@ export default function App() {
           }
         >
           <Route index element={<EncoderHome />} />
-          <Route path="register" element={<Registration />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="reports/:id" element={<Reports />} />
+          <Route path="applicants"     element={<Applicants />} />
+          <Route path="applicants/:id" element={<Applicants />} />
+          <Route path="courses"        element={<Courses />} />
+          <Route path="reports"        element={<Reports />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,35 +2,37 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, FilePlus, FileText, ClipboardList,
-  Users, ScrollText, Settings, ChevronUp, X, DatabaseBackup,
+  LayoutDashboard, FileText, ClipboardList, Users2, BookOpen,
+  Users, ScrollText, Settings, ChevronUp, X, DatabaseBackup, UserCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import clsx from 'clsx';
 
 const adminNav = [
-  { to: '/admin',          icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/admin/register', icon: FilePlus,         label: 'New Registration' },
-  { to: '/admin/reports',  icon: FileText,          label: 'Reports' },
+  { to: '/admin',             icon: LayoutDashboard, label: 'Dashboard',  end: true },
+  { to: '/admin/applicants',  icon: UserCheck,       label: 'Applicants'           },
+  { to: '/admin/courses',     icon: BookOpen,        label: 'Courses'              },
+  { to: '/admin/reports',     icon: FileText,        label: 'Reports'              },
 ];
 
 const encoderNav = [
-  { to: '/encoder', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/encoder/register', icon: FilePlus, label: 'New Registration' },
-  { to: '/encoder/reports', icon: ClipboardList, label: 'Reports' },
+  { to: '/encoder',            icon: LayoutDashboard, label: 'Dashboard',  end: true },
+  { to: '/encoder/applicants', icon: UserCheck,       label: 'Applicants'           },
+  { to: '/encoder/courses',    icon: BookOpen,        label: 'Courses'              },
+  { to: '/encoder/reports',    icon: ClipboardList,   label: 'Reports'              },
 ];
 
 const adminSettingsNav = [
   { to: '/admin/users',   icon: Users,          label: 'User Management' },
-  { to: '/admin/audit',   icon: ScrollText,      label: 'Audit Trail' },
-  { to: '/admin/backup',  icon: DatabaseBackup,  label: 'Backup & Restore' },
+  { to: '/admin/audit',   icon: ScrollText,      label: 'Audit Trail'     },
+  { to: '/admin/backup',  icon: DatabaseBackup,  label: 'Backup & Restore'},
 ];
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const user = useAuthStore(state => state.user);
+  const user      = useAuthStore(state => state.user);
   const clearAuth = useAuthStore(state => state.clearAuth);
-  const navigate = useNavigate();
-  const navItems = user?.role === 'admin' ? adminNav : encoderNav;
+  const navigate  = useNavigate();
+  const navItems  = user?.role === 'admin' ? adminNav : encoderNav;
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);

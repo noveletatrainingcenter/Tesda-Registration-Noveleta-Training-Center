@@ -12,11 +12,12 @@ import { testConnection } from './config/db.js';
 import authRoutes from './routes/shared/auth.routes.js';
 import accountRoutes from './routes/shared/account.routes.js';
 import registrationRoutes from './routes/shared/registration.routes.js';
+import courseRoutes from './routes/shared/course.routes.js';
+import reportRoutes from './routes/shared/report.routes.js';
 
 // Admin routes
 import userRoutes from './routes/admin/users.routes.js';
 import auditRoutes from './routes/admin/audit.routes.js';
-import courseRoutes from './routes/admin/courses.routes.js';
 import backupRoutes from './routes/admin/backup.routes.js';
 import { loadAndStartScheduler } from './controllers/admin/backup.controller.js';
 
@@ -39,11 +40,12 @@ await fastify.register(cookie);
 await fastify.register(authRoutes,          { prefix: '/api/auth' });
 await fastify.register(accountRoutes,       { prefix: '/api/account' });
 await fastify.register(registrationRoutes,  { prefix: '/api/registrations' });
+fastify.register(courseRoutes,  { prefix: '/api/courses'  });
+fastify.register(reportRoutes,  { prefix: '/api/reports' }); 
 
 // ── Admin routes ──────────────────────────────────────────────────────────
 await fastify.register(userRoutes,   { prefix: '/api/admin/users' });
 await fastify.register(auditRoutes,  { prefix: '/api/admin/audit-logs' });
-await fastify.register(courseRoutes, { prefix: '/api/admin/courses' });
 await fastify.register(backupRoutes, { prefix: '/api/admin/backups' });
 
 // ── Health check ──────────────────────────────────────────────────────────

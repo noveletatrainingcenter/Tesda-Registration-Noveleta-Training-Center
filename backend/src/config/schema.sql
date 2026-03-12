@@ -119,11 +119,29 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE TABLE IF NOT EXISTS courses (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  code VARCHAR(50),
-  sector VARCHAR(100),
+  sector VARCHAR(150),
+  description TEXT,
   is_active BOOLEAN DEFAULT TRUE,
-  created_at DATETIME DEFAULT NOW()
+  created_by VARCHAR(9),
+  status ENUM('active', 'archived') DEFAULT 'active',
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+
+  FOREIGN KEY (created_by) REFERENCES users(id),
+  INDEX idx_sector (sector),
+  INDEX idx_status (status)
 );
+
+-- Seed: Sample courses
+INSERT IGNORE INTO courses (name, sector) VALUES
+('Computer Systems Servicing NC II', 'ICT'),
+('Bread and Pastry Production NC II', 'Food and Beverage'),
+('Caregiving NC II', 'Health Social and Other Community Development Services'),
+('Electrical Installation and Maintenance NC II', 'Electrical and Electronics'),
+('Cookery NC II', 'Food and Beverage'),
+('Shielded Metal Arc Welding NC I', 'Metals and Engineering'),
+('Driving NC II', 'Land Transportation'),
+('Hairdressing NC II', 'Wholesale and Retail Trading / Services');
 
 -- =============================================
 -- Seed: Default Admin & Encoder accounts
@@ -143,13 +161,83 @@ INSERT IGNORE INTO users (id, username, email, password_hash, role, full_name, s
  '$2b$10$MjcI3dtNCAMYcnbPx7q1ZO.iOSmSmm/QiiRmfCueQaeNNZ1BpIgM.',
  'encoder', 'Data Encoder 2', NULL, NULL);
 
--- Seed: Sample courses
-INSERT IGNORE INTO courses (name, code, sector) VALUES
-('Computer Systems Servicing NC II', 'CSS-NC2', 'ICT'),
-('Bread and Pastry Production NC II', 'BPP-NC2', 'Food and Beverage'),
-('Caregiving NC II', 'CG-NC2', 'Health Social and Other Community Development Services'),
-('Electrical Installation and Maintenance NC II', 'EIM-NC2', 'Electrical and Electronics'),
-('Cookery NC II', 'COOK-NC2', 'Food and Beverage'),
-('Shielded Metal Arc Welding NC I', 'SMAW-NC1', 'Metals and Engineering'),
-('Driving NC II', 'DRV-NC2', 'Land Transportation'),
-('Hairdressing NC II', 'HD-NC2', 'Wholesale and Retail Trading / Services');
+-- =============================================
+-- Reports Module — Add to schema.sql
+-- Run these after your existing schema
+-- =============================================
+
+-- Report Header (one per generated report)
+CREATE TABLE IF NOT EXISTS reports (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  -- Report meta
+  title VARCHAR(255) DEFAULT 'ENROLLMENT/TERMINAL REPORT',
+  program_title VARCHAR(255),
+
+  -- TVET Provider Profile
+  region VARCHAR(100) DEFAULT 'REGION 4A',
+  province VARCHAR(100) DEFAULT 'CAVITE',
+  district VARCHAR(100) DEFAULT 'District I',
+  municipality VARCHAR(100) DEFAULT 'Noveleta',
+  provider_name VARCHAR(255) DEFAULT 'Noveleta Training Center',
+  tbp_id VARCHAR(100),
+  address VARCHAR(255) DEFAULT 'Poblacion, Noveleta Cavite',
+  institution_type ENUM('Public', 'Private', 'TESDA') DEFAULT 'Public',
+  classification VARCHAR(100) DEFAULT 'LGU',
+  full_qualification VARCHAR(255),
+  qualification_clustered VARCHAR(255),
+
+  -- Program Profile
+  qualification_ntr VARCHAR(255),
+  copr_number VARCHAR(100),
+  delivery_mode VARCHAR(255),        -- course name
+  industry_sector VARCHAR(150),
+  industry_sector_other VARCHAR(150),
+
+  -- Signatories
+  prepared_by_left VARCHAR(255),
+  prepared_by_right VARCHAR(255),
+  nclc_admin VARCHAR(255),
+
+  -- Meta
+  created_by VARCHAR(9),
+  status ENUM('active', 'archived') DEFAULT 'active',
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+
+  FOREIGN KEY (created_by) REFERENCES users(id),
+  INDEX idx_status (status),
+  INDEX idx_created_at (created_at)
+);
+
+-- Report Trainees (one row per trainee per report)
+CREATE TABLE IF NOT EXISTS report_trainees (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  report_id INT NOT NULL,
+  registration_id INT NOT NULL,       -- links to registration table
+
+  -- Student ID (generated: NTC-XX-0001)
+  student_id_number VARCHAR(50),
+
+  -- Training columns (the "empty" fields from the form)
+  pgs_training_component VARCHAR(255),
+  voucher_number VARCHAR(100),
+  client_type VARCHAR(50),
+  date_started DATE,
+  date_finished DATE,
+  reason_not_finishing TEXT,
+  assessment_results VARCHAR(255),
+
+  -- Employment
+  employment_date DATE,
+  employer_name VARCHAR(255),
+  employer_address VARCHAR(255),
+
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+
+  FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
+  FOREIGN KEY (registration_id) REFERENCES registration(id),
+  INDEX idx_report_id (report_id),
+  INDEX idx_registration_id (registration_id)
+);
