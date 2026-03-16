@@ -15,16 +15,38 @@ function nullableDate(v) {
 
 // ─── GET /reports ─────────────────────────────────────────────────────────────
 export async function getReports(request, reply) {
-  const { page = 1, limit = 15, search = '' } = request.query;
+  const {
+    page = 1, limit = 15, search = '',
+    archived, date_from, date_to, min_trainees, max_trainees,
+  } = request.query;
   const offset = (page - 1) * limit;
   try {
-    let where  = 'WHERE r.status = "active"';
+    const statusVal = archived === 'true' || archived === true ? 'archived' : 'active';
+    let where  = `WHERE r.status = "${statusVal}"`;
     const params = [];
+
     if (search) {
-      where += ` AND (r.title LIKE ? OR r.provider_name LIKE ? OR r.delivery_mode LIKE ?)`;
+      where += ` AND (r.title LIKE ? OR r.program_title LIKE ? OR r.delivery_mode LIKE ?)`;
       const s = `%${search}%`;
       params.push(s, s, s);
     }
+    if (date_from) {
+      where += ` AND DATE(r.created_at) >= ?`;
+      params.push(date_from);
+    }
+    if (date_to) {
+      where += ` AND DATE(r.created_at) <= ?`;
+      params.push(date_to);
+    }
+    if (min_trainees) {
+      where += ` AND (SELECT COUNT(*) FROM report_trainees rt WHERE rt.report_id = r.id) >= ?`;
+      params.push(parseInt(min_trainees));
+    }
+    if (max_trainees) {
+      where += ` AND (SELECT COUNT(*) FROM report_trainees rt WHERE rt.report_id = r.id) <= ?`;
+      params.push(parseInt(max_trainees));
+    }
+
     const [rows] = await db.execute(
       `SELECT r.*,
               u.full_name AS creator_name,
@@ -39,7 +61,13 @@ export async function getReports(request, reply) {
     const [[{ total }]] = await db.execute(
       `SELECT COUNT(*) AS total FROM reports r ${where}`, params
     );
-    return reply.send({ success: true, data: rows, total, page: parseInt(page), pages: Math.ceil(total / limit) });
+    return reply.send({
+      success: true,
+      data: rows,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
   } catch (err) {
     request.log.error(err);
     return reply.code(500).send({ success: false, message: 'Server error.' });
@@ -123,8 +151,13 @@ export async function createReport(request, reply) {
              report_id, registration_id, student_id_number,
              pgs_training_component, voucher_number, client_type,
              date_started, date_finished, reason_not_finishing, assessment_results,
-             employment_date, employer_name, employer_address
-           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+             employment_date, employer_name, employer_address,
+             region, province, district, municipality,
+             provider_name, tbp_id, address, institution_type, classification,
+             full_qualification, qualification_clustered,
+             qualification_ntr, copr_number,
+             industry_sector, industry_sector_other, delivery_mode
+           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
             reportId, t.registration_id, sanitize(t.student_id_number),
             sanitize(t.pgs_training_component), sanitize(t.voucher_number),
@@ -133,6 +166,15 @@ export async function createReport(request, reply) {
             sanitize(t.reason_not_finishing), sanitize(t.assessment_results),
             nullableDate(t.employment_date),
             sanitize(t.employer_name), sanitize(t.employer_address),
+            sanitize(t.region), sanitize(t.province),
+            sanitize(t.district), sanitize(t.municipality),
+            sanitize(t.provider_name), sanitize(t.tbp_id),
+            sanitize(t.address), sanitize(t.institution_type),
+            sanitize(t.classification),
+            sanitize(t.full_qualification), sanitize(t.qualification_clustered),
+            sanitize(t.qualification_ntr), sanitize(t.copr_number),
+            sanitize(t.industry_sector), sanitize(t.industry_sector_other),
+            sanitize(t.delivery_mode),
           ]
         );
       }
@@ -192,8 +234,13 @@ export async function updateReport(request, reply) {
              report_id, registration_id, student_id_number,
              pgs_training_component, voucher_number, client_type,
              date_started, date_finished, reason_not_finishing, assessment_results,
-             employment_date, employer_name, employer_address
-           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+             employment_date, employer_name, employer_address,
+             region, province, district, municipality,
+             provider_name, tbp_id, address, institution_type, classification,
+             full_qualification, qualification_clustered,
+             qualification_ntr, copr_number,
+             industry_sector, industry_sector_other, delivery_mode
+           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
             id, t.registration_id, sanitize(t.student_id_number),
             sanitize(t.pgs_training_component), sanitize(t.voucher_number),
@@ -202,6 +249,15 @@ export async function updateReport(request, reply) {
             sanitize(t.reason_not_finishing), sanitize(t.assessment_results),
             nullableDate(t.employment_date),
             sanitize(t.employer_name), sanitize(t.employer_address),
+            sanitize(t.region), sanitize(t.province),
+            sanitize(t.district), sanitize(t.municipality),
+            sanitize(t.provider_name), sanitize(t.tbp_id),
+            sanitize(t.address), sanitize(t.institution_type),
+            sanitize(t.classification),
+            sanitize(t.full_qualification), sanitize(t.qualification_clustered),
+            sanitize(t.qualification_ntr), sanitize(t.copr_number),
+            sanitize(t.industry_sector), sanitize(t.industry_sector_other),
+            sanitize(t.delivery_mode),
           ]
         );
       }
@@ -228,6 +284,21 @@ export async function archiveReport(request, reply) {
       [request.user.id, request.user.full_name, 'ARCHIVE_REPORT', 'Reports', `Archived ID:${id}`, request.ip]
     );
     return reply.send({ success: true, message: 'Report archived.' });
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: 'Server error.' });
+  }
+}
+
+// ─── PATCH /reports/:id/restore ───────────────────────────────────────────────
+export async function restoreReport(request, reply) {
+  const { id } = request.params;
+  try {
+    await db.execute('UPDATE reports SET status = "active" WHERE id = ?', [id]);
+    await db.execute(
+      'INSERT INTO audit_logs (user_id,user_name,action,module,details,ip_address) VALUES (?,?,?,?,?,?)',
+      [request.user.id, request.user.full_name, 'RESTORE_REPORT', 'Reports', `Restored ID:${id}`, request.ip]
+    );
+    return reply.send({ success: true, message: 'Report restored.' });
   } catch (err) {
     return reply.code(500).send({ success: false, message: 'Server error.' });
   }

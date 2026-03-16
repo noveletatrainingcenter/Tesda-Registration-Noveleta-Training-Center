@@ -6,7 +6,7 @@ import {
   FileText, Search, ChevronDown, ChevronUp, Plus, Printer,
   Check, AlertCircle, User, Building2, BookOpen, Briefcase,
   CheckCircle2, ChevronRight, ChevronLeft, Save, Eye,
-  Archive, RefreshCw,
+  Archive, RefreshCw, AlertTriangle, Pencil,
 } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -62,46 +62,133 @@ const CLIENT_TYPES = [
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TraineeExtra {
-  registration_id:        number;
-  student_id_number:      string;
-  pgs_training_component: string;
-  voucher_number:         string;
-  client_type:            string;
-  date_started:           string;
-  date_finished:          string;
-  reason_not_finishing:   string;
-  assessment_results:     string;
-  employment_date:        string;
-  employer_name:          string;
-  employer_address:       string;
+  registration_id:         number;
+  student_id_number:       string;
+  pgs_training_component:  string;
+  voucher_number:          string;
+  client_type:             string;
+  date_started:            string;
+  date_finished:           string;
+  reason_not_finishing:    string;
+  assessment_results:      string;
+  employment_date:         string;
+  employer_name:           string;
+  employer_address:        string;
+  // ── Per-trainee TVET Provider ──
+  region:                  string;
+  province:                string;
+  district:                string;
+  municipality:            string;
+  provider_name:           string;
+  tbp_id:                  string;
+  address:                 string;
+  institution_type:        string;
+  classification:          string;
+  full_qualification:      string;
+  qualification_clustered: string;
+  // ── Per-trainee Program Profile ──
+  qualification_ntr:       string;
+  copr_number:             string;
+  industry_sector:         string;
+  industry_sector_other:   string;
+  delivery_mode:           string;
 }
 
 function emptyExtra(id: number): TraineeExtra {
   return {
-    registration_id: id, student_id_number: '',
+    registration_id: id,
+    student_id_number: '',
     pgs_training_component: '', voucher_number: '', client_type: '',
     date_started: '', date_finished: '', reason_not_finishing: '',
     assessment_results: '', employment_date: '', employer_name: '', employer_address: '',
+    // Provider defaults (pre-filled for convenience)
+    region: 'REGION 4A', province: 'CAVITE', district: 'District I',
+    municipality: 'Noveleta', provider_name: 'Noveleta Training Center',
+    tbp_id: '', address: 'Poblacion, Noveleta Cavite',
+    institution_type: 'Public', classification: 'LGU',
+    full_qualification: '', qualification_clustered: '',
+    // Program defaults
+    qualification_ntr: '', copr_number: '',
+    industry_sector: '', industry_sector_other: '', delivery_mode: '',
   };
 }
 
+// ProviderInfo now only holds report-level info + signatories
 interface ProviderInfo {
-  title: string;             program_title: string;
-  region: string;            province: string;
-  district: string;          municipality: string;
-  provider_name: string;     tbp_id: string;
-  address: string;           institution_type: string;
-  classification: string;    full_qualification: string;
-  qualification_clustered: string;
-  prepared_by_left: string;  prepared_by_right: string;
-  nclc_admin: string;
+  title:            string;
+  program_title:    string;
+  prepared_by_left: string;
+  prepared_by_right:string;
+  nclc_admin:       string;
 }
 
+// ProgramInfo kept for backward compat (used in step 0 sector filter only)
 interface ProgramInfo {
   qualification_ntr:     string;
   copr_number:           string;
   industry_sector:       string;
   industry_sector_other: string;
+}
+
+// ─── ConfirmModal ─────────────────────────────────────────────────────────────
+interface ConfirmModalProps {
+  open:          boolean;
+  onClose:       () => void;
+  onConfirm:     () => void;
+  title:         string;
+  description:   string;
+  confirmLabel?: string;
+}
+
+function ConfirmModal({ open, onClose, onConfirm, title, description, confirmLabel = 'Confirm' }: ConfirmModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            key="dialog"
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1,    y: 0 }}
+            exit={{   opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4"
+          >
+            <div className="pointer-events-auto w-full max-w-sm card p-6 shadow-2xl">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-accent/10 text-accent">
+                  <AlertTriangle size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-text-primary leading-snug">{title}</h3>
+                  <p className="text-sm text-text-muted mt-1 leading-relaxed">{description}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-5">
+                <button className="btn-ghost text-sm" onClick={onClose}>Cancel</button>
+                 <button className="btn-primary text-sm" onClick={onConfirm}>
+                  {confirmLabel}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 }
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
@@ -136,15 +223,15 @@ function Sel({ value, onChange, options, placeholder }: {
 
 // ─── STEP INDICATOR ───────────────────────────────────────────────────────────
 const STEPS = [
-  { label: 'Select Course',      icon: BookOpen   },
-  { label: 'Select Applicants',  icon: User       },
-  { label: 'Training Details',   icon: Briefcase  },
-  { label: 'Provider & Program', icon: Building2  },
-  { label: 'Review & Print',     icon: FileText   },
+  { label: 'Select Course',     icon: BookOpen   },
+  { label: 'Select Applicants', icon: User       },
+  { label: 'Training Details',  icon: Briefcase  },
+  { label: 'Signatories',       icon: User       },
+  { label: 'Review & Print',    icon: FileText   },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 0 — Select Course
+// STEP 0 — Select Course (for sectorCode derivation only now)
 // ─────────────────────────────────────────────────────────────────────────────
 function StepSelectCourse({
   selectedCourse, setSelectedCourse,
@@ -162,69 +249,91 @@ function StepSelectCourse({
   });
   const courses: any[] = coursesData || [];
 
-  function setPI(k: keyof ProgramInfo, v: string) { setProgramInfo({ ...programInfo, [k]: v }); }
+  function handleSectorChange(v: string) {
+    setProgramInfo({
+      ...programInfo,
+      industry_sector: v,
+      industry_sector_other: v !== 'Others' ? '' : programInfo.industry_sector_other,
+    });
+    if (selectedCourse?.sector && selectedCourse.sector !== v) {
+      setSelectedCourse(null);
+    }
+  }
+
+  const filteredCourses = courses.filter((c: any) => {
+    if (!programInfo.industry_sector) return false;
+    if (!c.sector) return true;
+    return c.sector === programInfo.industry_sector;
+  });
+
+  function isSelected(c: any) {
+    if (!selectedCourse) return false;
+    if (selectedCourse.id && selectedCourse.id === c.id) return true;
+    if (selectedCourse.name && selectedCourse.name === c.name) return true;
+    return false;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="form-section-title"><BookOpen size={15} /> Select the Course / Training Program</div>
-      <p className="text-xs text-text-muted -mt-2">
-        Choose the course this batch of trainees attended. This becomes the Delivery Mode on the report.
-      </p>
-
-      {/* Course cards */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {[...Array(6)].map((_, i) => <div key={i} className="skeleton h-16 rounded-xl" />)}
-        </div>
-      ) : courses.length === 0 ? (
-        <div className="text-center py-12 text-text-muted text-sm">No active courses found.</div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {courses.map((c: any) => (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCourse(c)}
-              className={clsx(
-                'text-left p-4 rounded-xl border transition-all',
-                selectedCourse?.id === c.id
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-border hover:border-accent/50 bg-bg-input hover:bg-accent/5'
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="text-sm font-medium text-text-primary leading-snug">{c.name}</div>
-                {selectedCourse?.id === c.id && <CheckCircle2 size={16} className="text-accent shrink-0 mt-0.5" />}
-              </div>
-              {c.sector && <div className="text-xs text-text-muted mt-1">{c.sector}</div>}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Extra program fields once a course is picked */}
-      {selectedCourse && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-2">
-          <div className="form-section-title"><FileText size={15} /> Program Details</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Industry Sector of Qualification" required>
-              <Sel
-                value={programInfo.industry_sector}
-                onChange={v => { setPI('industry_sector', v); if (v !== 'Others') setPI('industry_sector_other', ''); }}
-                options={INDUSTRY_SECTORS}
+      <div>
+        <div className="form-section-title"><FileText size={15} /> Program Details</div>
+        <p className="text-xs text-text-muted -mt-2 mb-4">
+          Select the industry sector to filter courses. This is used for the Student ID code only.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Industry Sector of Qualification" required>
+            <Sel value={programInfo.industry_sector} onChange={handleSectorChange} options={INDUSTRY_SECTORS} />
+          </Field>
+          {programInfo.industry_sector === 'Others' && (
+            <Field label="Please Specify">
+              <Inp
+                value={programInfo.industry_sector_other}
+                onChange={v => setProgramInfo({ ...programInfo, industry_sector_other: v })}
+                placeholder="Specify sector"
               />
             </Field>
-            {programInfo.industry_sector === 'Others' && (
-              <Field label="Please Specify">
-                <Inp value={programInfo.industry_sector_other} onChange={v => setPI('industry_sector_other', v)} placeholder="Specify sector" />
-              </Field>
-            )}
-            <Field label="Qualification (NTR)">
-              <Inp value={programInfo.qualification_ntr} onChange={v => setPI('qualification_ntr', v)} placeholder="(optional)" />
-            </Field>
-            <Field label="CoPR Number">
-              <Inp value={programInfo.copr_number} onChange={v => setPI('copr_number', v)} placeholder="(optional)" />
-            </Field>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {programInfo.industry_sector && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+          <div className="form-section-title"><BookOpen size={15} /> Select Course / Training Program</div>
+          <p className="text-xs text-text-muted -mt-2">
+            Showing courses for <span className="text-accent font-medium">{programInfo.industry_sector}</span>.
+            {filteredCourses.length === 0 && !isLoading && ' No matching courses — check that your courses have a sector assigned.'}
+          </p>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[...Array(6)].map((_, i) => <div key={i} className="skeleton h-16 rounded-xl" />)}
+            </div>
+          ) : filteredCourses.length === 0 ? (
+            <div className="text-center py-10 text-text-muted text-sm border border-dashed border-border rounded-xl">
+              No courses found for this sector.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {filteredCourses.map((c: any) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCourse(c)}
+                  className={clsx(
+                    'text-left p-4 rounded-xl border transition-all',
+                    isSelected(c)
+                      ? 'border-accent bg-accent/10 text-accent'
+                      : 'border-border hover:border-accent/50 bg-bg-input hover:bg-accent/5'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-sm font-medium text-text-primary leading-snug">{c.name}</div>
+                    {isSelected(c) && <CheckCircle2 size={16} className="text-accent shrink-0 mt-0.5" />}
+                  </div>
+                  {c.sector && <div className="text-xs text-text-muted mt-1">{c.sector}</div>}
+                </button>
+              ))}
+            </div>
+          )}
         </motion.div>
       )}
     </div>
@@ -232,7 +341,7 @@ function StepSelectCourse({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 1 — Select Applicants (ALL active applicants, no course filter)
+// STEP 1 — Select Applicants
 // ─────────────────────────────────────────────────────────────────────────────
 function StepSelectApplicants({
   selectedIds, setSelectedIds,
@@ -245,10 +354,7 @@ function StepSelectApplicants({
 
   const { data, isLoading } = useQuery({
     queryKey: ['all-applicants-report', search, page],
-    queryFn: () =>
-      api.get('/registrations', {
-        params: { page, limit: 10, search, status: 'active' },
-      }).then(r => r.data),
+    queryFn: () => api.get('/registrations', { params: { page, limit: 10, search, status: 'active' } }).then(r => r.data),
     staleTime: 10000,
   });
 
@@ -257,9 +363,7 @@ function StepSelectApplicants({
   const total              = data?.total || 0;
 
   function toggle(id: number) {
-    setSelectedIds(selectedIds.includes(id)
-      ? selectedIds.filter(x => x !== id)
-      : [...selectedIds, id]);
+    setSelectedIds(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
   }
   function togglePage() {
     const pageIds     = applicants.map((r: any) => r.id);
@@ -272,15 +376,12 @@ function StepSelectApplicants({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="form-section-title"><User size={15} /> Select Applicants for This Batch</div>
-        {selectedIds.length > 0 && (
-          <span className="badge badge-blue">{selectedIds.length} selected</span>
-        )}
+        {selectedIds.length > 0 && <span className="badge badge-blue">{selectedIds.length} selected</span>}
       </div>
       <p className="text-xs text-text-muted -mt-2">
-        Select all applicants who attended this training batch. Their personal information is already saved from registration.
+        Select all applicants who attended this training batch.
       </p>
 
-      {/* Search */}
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
         <input className="input-base pl-9 text-sm" placeholder="Search by name, ULI, contact…"
@@ -296,11 +397,7 @@ function StepSelectApplicants({
                   checked={applicants.length > 0 && applicants.every((r: any) => selectedIds.includes(r.id))}
                   onChange={togglePage} />
               </th>
-              <th>Name</th>
-              <th>ULI</th>
-              <th>Contact</th>
-              <th>Sex</th>
-              <th>Civil Status</th>
+              <th>Name</th><th>ULI</th><th>Contact</th><th>Sex</th><th>Civil Status</th>
             </tr>
           </thead>
           <tbody>
@@ -346,8 +443,7 @@ function StepSelectApplicants({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 2 — Training Details per applicant
-// (personal info is read-only, pulled from registration)
+// STEP 2 — Training Details + TVET Provider + Program Profile per trainee
 // ─────────────────────────────────────────────────────────────────────────────
 function StepTrainingDetails({
   applicants, extras, setExtras, sectorCode,
@@ -369,14 +465,14 @@ function StepTrainingDetails({
     <div className="space-y-3">
       <div className="form-section-title"><Briefcase size={15} /> Training Details per Trainee</div>
       <p className="text-xs text-text-muted -mt-2">
-        Personal info is pre-filled from registration. Fill in the training-specific fields below for each trainee.
+        Each trainee has their own TVET Provider, Program Profile, and training details.
       </p>
 
       {applicants.map((r: any, idx) => {
         const ex         = getEx(r.id);
         const isOpen     = openId === r.id;
         const suggested  = suggestId(idx);
-        const isComplete = !!(ex.client_type && ex.date_started && ex.date_finished);
+        const isComplete = !!(ex.client_type && ex.date_started && ex.date_finished && ex.provider_name && ex.delivery_mode);
 
         return (
           <div key={r.id} className="card overflow-hidden">
@@ -421,7 +517,7 @@ function StepTrainingDetails({
                 >
                   <div className="p-4 space-y-5">
 
-                    {/* Read-only personal info from registration */}
+                    {/* ── Personal Info (read-only) ── */}
                     <div>
                       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">
                         Personal Info (from Registration)
@@ -448,7 +544,7 @@ function StepTrainingDetails({
                       </div>
                     </div>
 
-                    {/* Student ID */}
+                    {/* ── Student ID ── */}
                     <div>
                       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Student ID</div>
                       <div className="max-w-xs">
@@ -465,7 +561,77 @@ function StepTrainingDetails({
                       </div>
                     </div>
 
-                    {/* Training fields */}
+                    {/* ── TVET Provider Info (per trainee) ── */}
+                    <div>
+                      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">
+                        <Building2 size={12} className="inline mr-1" />TVET Provider Info
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <Field label="Region">
+                          <Inp value={ex.region} onChange={v => setEx(r.id, 'region', v)} />
+                        </Field>
+                        <Field label="Province">
+                          <Inp value={ex.province} onChange={v => setEx(r.id, 'province', v)} />
+                        </Field>
+                        <Field label="District">
+                          <Inp value={ex.district} onChange={v => setEx(r.id, 'district', v)} />
+                        </Field>
+                        <Field label="Municipality / City">
+                          <Inp value={ex.municipality} onChange={v => setEx(r.id, 'municipality', v)} />
+                        </Field>
+                        <Field label="Name of Provider" required>
+                          <Inp value={ex.provider_name} onChange={v => setEx(r.id, 'provider_name', v)} />
+                        </Field>
+                        <Field label="TBP ID Number">
+                          <Inp value={ex.tbp_id} onChange={v => setEx(r.id, 'tbp_id', v)} placeholder="(optional)" />
+                        </Field>
+                        <div className="md:col-span-2">
+                          <Field label="Address">
+                            <Inp value={ex.address} onChange={v => setEx(r.id, 'address', v)} />
+                          </Field>
+                        </div>
+                        <Field label="Type of Institution">
+                          <Sel value={ex.institution_type} onChange={v => setEx(r.id, 'institution_type', v)} options={INSTITUTION_TYPES} />
+                        </Field>
+                        <Field label="Classification of Provider">
+                          <Inp value={ex.classification} onChange={v => setEx(r.id, 'classification', v)} />
+                        </Field>
+                        <Field label="Full Qualification (WTR)">
+                          <Inp value={ex.full_qualification} onChange={v => setEx(r.id, 'full_qualification', v)} placeholder="(optional)" />
+                        </Field>
+                        <Field label="Qualification (Clustered)">
+                          <Inp value={ex.qualification_clustered} onChange={v => setEx(r.id, 'qualification_clustered', v)} placeholder="(optional)" />
+                        </Field>
+                      </div>
+                    </div>
+
+                    {/* ── Program Profile (per trainee) ── */}
+                    <div>
+                      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">
+                        <BookOpen size={12} className="inline mr-1" />Program Profile
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <Field label="Delivery Mode" required>
+                          <Inp value={ex.delivery_mode} onChange={v => setEx(r.id, 'delivery_mode', v)} placeholder="e.g. Computer Systems Servicing NC II" />
+                        </Field>
+                        <Field label="Industry Sector">
+                          <Sel value={ex.industry_sector} onChange={v => setEx(r.id, 'industry_sector', v)} options={INDUSTRY_SECTORS} />
+                        </Field>
+                        {ex.industry_sector === 'Others' && (
+                          <Field label="Please Specify">
+                            <Inp value={ex.industry_sector_other} onChange={v => setEx(r.id, 'industry_sector_other', v)} placeholder="Specify sector" />
+                          </Field>
+                        )}
+                        <Field label="Qualification (NTR)">
+                          <Inp value={ex.qualification_ntr} onChange={v => setEx(r.id, 'qualification_ntr', v)} placeholder="(optional)" />
+                        </Field>
+                        <Field label="CoPR Number">
+                          <Inp value={ex.copr_number} onChange={v => setEx(r.id, 'copr_number', v)} placeholder="(optional)" />
+                        </Field>
+                      </div>
+                    </div>
+
+                    {/* ── Training ── */}
                     <div>
                       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Training</div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -478,11 +644,35 @@ function StepTrainingDetails({
                         <Field label="Client Type" required>
                           <Sel value={ex.client_type} onChange={v => setEx(r.id, 'client_type', v)} options={CLIENT_TYPES} />
                         </Field>
-                        <Field label="Date Started (mm-dd-yy)" required>
-                          <Inp value={ex.date_started} onChange={v => setEx(r.id, 'date_started', v)} placeholder="07-21-25" />
+                        <Field label="Date Started" required>
+                          <input
+                            type="date"
+                            className="input-base text-sm"
+                            value={ex.date_started
+                              ? `20${ex.date_started.slice(6,8)}-${ex.date_started.slice(0,2)}-${ex.date_started.slice(3,5)}`
+                              : ''}
+                            onChange={e => {
+                              const d = e.target.value; // yyyy-mm-dd
+                              if (!d) { setEx(r.id, 'date_started', ''); return; }
+                              const [y, m, day] = d.split('-');
+                              setEx(r.id, 'date_started', `${m}-${day}-${y.slice(2)}`);
+                            }}
+                          />
                         </Field>
-                        <Field label="Date Finished (mm-dd-yy)" required>
-                          <Inp value={ex.date_finished} onChange={v => setEx(r.id, 'date_finished', v)} placeholder="09-12-25" />
+                        <Field label="Date Finished" required>
+                          <input
+                            type="date"
+                            className="input-base text-sm"
+                            value={ex.date_finished
+                              ? `20${ex.date_finished.slice(6,8)}-${ex.date_finished.slice(0,2)}-${ex.date_finished.slice(3,5)}`
+                              : ''}
+                            onChange={e => {
+                              const d = e.target.value;
+                              if (!d) { setEx(r.id, 'date_finished', ''); return; }
+                              const [y, m, day] = d.split('-');
+                              setEx(r.id, 'date_finished', `${m}-${day}-${y.slice(2)}`);
+                            }}
+                          />
                         </Field>
                         <Field label="Reason for Not Finishing">
                           <Inp value={ex.reason_not_finishing} onChange={v => setEx(r.id, 'reason_not_finishing', v)} placeholder="(optional)" />
@@ -493,7 +683,7 @@ function StepTrainingDetails({
                       </div>
                     </div>
 
-                    {/* Employment */}
+                    {/* ── Employment ── */}
                     <div>
                       <div className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Employment</div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -521,84 +711,47 @@ function StepTrainingDetails({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 3 — Provider & Program info (pre-filled, editable)
+// STEP 3 — Signatories only (shared for the whole report)
 // ─────────────────────────────────────────────────────────────────────────────
-function StepProviderProgram({
+function StepSignatories({
   provider, setProvider,
-  programInfo, setProgramInfo,
-  courseName,
 }: {
   provider: ProviderInfo;
   setProvider: (v: ProviderInfo) => void;
-  programInfo: ProgramInfo;
-  setProgramInfo: (v: ProgramInfo) => void;
-  courseName: string;
 }) {
   function setP(k: keyof ProviderInfo, v: string) { setProvider({ ...provider, [k]: v }); }
-  function setPI(k: keyof ProgramInfo, v: string) { setProgramInfo({ ...programInfo, [k]: v }); }
 
   return (
     <div className="space-y-6">
-
-      {/* TVET Provider */}
+      {/* Report title / program title */}
       <div>
-        <div className="form-section-title"><Building2 size={15} /> TVET Providers Profile</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="form-section-title"><FileText size={15} /> Report Info</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Report Title">
             <Inp value={provider.title} onChange={v => setP('title', v)} />
           </Field>
           <Field label="Program Title">
             <Inp value={provider.program_title} onChange={v => setP('program_title', v)} placeholder="e.g. Reflexology Therapy" />
           </Field>
-          <Field label="Region"><Inp value={provider.region} onChange={v => setP('region', v)} /></Field>
-          <Field label="Province"><Inp value={provider.province} onChange={v => setP('province', v)} /></Field>
-          <Field label="District"><Inp value={provider.district} onChange={v => setP('district', v)} /></Field>
-          <Field label="Municipality / City"><Inp value={provider.municipality} onChange={v => setP('municipality', v)} /></Field>
-          <Field label="Name of Provider" required><Inp value={provider.provider_name} onChange={v => setP('provider_name', v)} /></Field>
-          <Field label="TBP ID Number"><Inp value={provider.tbp_id} onChange={v => setP('tbp_id', v)} placeholder="(optional)" /></Field>
-          <div className="md:col-span-2">
-            <Field label="Address"><Inp value={provider.address} onChange={v => setP('address', v)} /></Field>
-          </div>
-          <Field label="Type of Institution" required>
-            <Sel value={provider.institution_type} onChange={v => setP('institution_type', v)} options={INSTITUTION_TYPES} />
-          </Field>
-          <Field label="Classification of Provider"><Inp value={provider.classification} onChange={v => setP('classification', v)} /></Field>
-          <Field label="Full Qualification (WTR)"><Inp value={provider.full_qualification} onChange={v => setP('full_qualification', v)} placeholder="(optional)" /></Field>
-          <Field label="Qualification (Clustered)"><Inp value={provider.qualification_clustered} onChange={v => setP('qualification_clustered', v)} placeholder="(optional)" /></Field>
-        </div>
-      </div>
-
-      {/* Program info — course is locked from step 0, other fields editable */}
-      <div>
-        <div className="form-section-title"><BookOpen size={15} /> Program Profile</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Delivery Mode (Course)">
-            <input className="input-base text-sm bg-bg-input opacity-70 cursor-not-allowed" value={courseName} readOnly />
-          </Field>
-          <Field label="Industry Sector">
-            <Sel
-              value={programInfo.industry_sector}
-              onChange={v => { setPI('industry_sector', v); if (v !== 'Others') setPI('industry_sector_other', ''); }}
-              options={INDUSTRY_SECTORS}
-            />
-          </Field>
-          {programInfo.industry_sector === 'Others' && (
-            <Field label="Please Specify">
-              <Inp value={programInfo.industry_sector_other} onChange={v => setPI('industry_sector_other', v)} placeholder="Specify sector" />
-            </Field>
-          )}
-          <Field label="Qualification (NTR)"><Inp value={programInfo.qualification_ntr} onChange={v => setPI('qualification_ntr', v)} placeholder="(optional)" /></Field>
-          <Field label="CoPR Number"><Inp value={programInfo.copr_number} onChange={v => setPI('copr_number', v)} placeholder="(optional)" /></Field>
         </div>
       </div>
 
       {/* Signatories */}
       <div>
         <div className="form-section-title"><User size={15} /> Signatories</div>
+        <p className="text-xs text-text-muted -mt-2 mb-4">
+          These appear at the bottom of the printed report and are shared across all trainees.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label="Prepared By (Left)"><Inp value={provider.prepared_by_left} onChange={v => setP('prepared_by_left', v)} placeholder="Name, Title" /></Field>
-          <Field label="Prepared By (Right)"><Inp value={provider.prepared_by_right} onChange={v => setP('prepared_by_right', v)} placeholder="Name, Title" /></Field>
-          <Field label="NCLC Administrator"><Inp value={provider.nclc_admin} onChange={v => setP('nclc_admin', v)} placeholder="Name" /></Field>
+          <Field label="Prepared By (1st Trainer)">
+            <Inp value={provider.prepared_by_left} onChange={v => setP('prepared_by_left', v)} placeholder="Name, Title" />
+          </Field>
+          <Field label="Prepared By (2nd Trainer)" >
+            <Inp value={provider.prepared_by_right} onChange={v => setP('prepared_by_right', v)} placeholder="Name, Title (optional)" />
+          </Field>
+          <Field label="NCLC Administrator" required>
+            <Inp value={provider.nclc_admin} onChange={v => setP('nclc_admin', v)} placeholder="Name" />
+          </Field>
         </div>
       </div>
     </div>
@@ -609,16 +762,14 @@ function StepProviderProgram({
 // STEP 4 — Review & Print
 // ─────────────────────────────────────────────────────────────────────────────
 function StepReviewPrint({
-  provider, programInfo, courseName,
-  applicants, extras, sectorCode, savedReportId,
+  provider, applicants, extras, sectorCode, savedReportId, selectedCourse,
 }: {
   provider: ProviderInfo;
-  programInfo: ProgramInfo;
-  courseName: string;
   applicants: any[];
   extras: Record<number, TraineeExtra>;
   sectorCode: string;
   savedReportId: number | null;
+  selectedCourse: any;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -641,14 +792,19 @@ function StepReviewPrint({
       <title>${provider.title || 'Enrollment Terminal Report'}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 7.5px; color: #000; background: #fff; }
-        .page { padding: 8mm; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        th, td { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; font-size: 7px; }
+        body { font-family: Arial, sans-serif; font-size: 7px; color: #000; background: #fff; }
+        .page { padding: 6mm; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; font-size: 6.5px; word-wrap: break-word; overflow-wrap: break-word; background: #fff; color: #000; }
         th { text-align: center; }
+        .title-block { margin-bottom: 4px; }
+        .sig-block { margin-top: 14px; display: flex; gap: 12px; width: 500px; }
+        .sig-item { flex: 1; }
+        .sig-label { font-size: 6.5px; color: #555; margin-bottom: 18px; }
+        .sig-name { border-top: 1px solid #000; padding-top: 2px; font-size: 8px; font-weight: bold; }
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { size: landscape; margin: 6mm; }
+          @page { size: landscape; margin: 5mm; }
         }
       </style>
     </head><body><div class="page">${content}</div></body></html>`);
@@ -657,9 +813,36 @@ function StepReviewPrint({
     setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
-  const sectorDisplay = programInfo.industry_sector === 'Others'
-    ? (programInfo.industry_sector_other || 'Others')
-    : programInfo.industry_sector;
+  // Shared cell style for data rows
+  const cellStyle: React.CSSProperties = {
+    border: '1px solid #000',
+    padding: '3px',
+    fontSize: 7,
+    verticalAlign: 'middle',
+    height: '28px',
+    background: '#fff',
+    color: '#000',
+  };
+
+  // Shared style for column-name header row
+  const colHeaderStyle: React.CSSProperties = {
+    background: '#555',
+    color: '#fff',
+    fontSize: 5.5,
+    padding: '2px 1px',
+    border: '1px solid #000',
+    whiteSpace: 'normal' as const,
+    lineHeight: 1.2,
+  };
+
+  // Shared style for column-letter row
+  const colLetterStyle: React.CSSProperties = {
+    background: '#ffe066',
+    color: '#000',
+    fontSize: 6,
+    padding: '2px 1px',
+    border: '1px solid #000',
+  };
 
   return (
     <div className="space-y-4">
@@ -677,150 +860,165 @@ function StepReviewPrint({
         </div>
       </div>
 
-      {/* Scrollable preview */}
-      <div className="overflow-auto rounded-xl border border-border">
+      <div style={{ overflowX: 'auto', overflowY: 'auto', borderRadius: '12px', border: '1px solid var(--border)', maxHeight: '600px' }}>
         <div
           ref={printRef}
-          style={{
-            fontFamily: 'Arial, sans-serif', fontSize: '8px',
-            padding: '10mm', background: '#fff', color: '#000', minWidth: '1200px',
-          }}
+          style={{ fontFamily: 'Arial, sans-serif', fontSize: '7px', padding: '6mm', background: '#fff', color: '#000', minWidth: '3300px', width: 'max-content' }}
         >
           {/* Title block */}
-          <div style={{ marginBottom: 6 }}>
-            <div style={{ fontSize: 13, fontWeight: 'bold', textDecoration: 'underline' }}>
+          <div style={{ marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 'bold', textDecoration: 'underline', color: '#000' }}>
               {provider.title || 'ENROLLMENT/TERMINAL REPORT'}
             </div>
-            {provider.provider_name && (
-              <div style={{ fontSize: 11, fontWeight: 'bold', marginTop: 2 }}>{provider.provider_name}</div>
-            )}
-            {provider.program_title && (
-              <div style={{ fontSize: 9, marginTop: 1 }}>{provider.program_title}</div>
+            <div style={{ fontSize: 9, fontWeight: 'bold', marginTop: 1, color: '#000' }}>
+              Noveleta Training Center
+            </div>
+            {(provider.program_title || selectedCourse?.name) && (
+              <div style={{ fontSize: 9, marginTop: 1, color: '#000' }}>
+                {provider.program_title || selectedCourse?.name}
+              </div>
             )}
           </div>
 
-          {/* ── TVET Providers Profile table ── */}
-          <table>
-            <thead>
-              <tr>
-                <td colSpan={11} style={{ background: '#f4a7b9', textAlign: 'center', fontWeight: 'bold', fontSize: 9, padding: '4px', border: '1px solid #000' }}>
-                  TVET Providers Profile
-                </td>
-              </tr>
-              <tr>
-                {['Region','Province','District','Municipality/City','Name of Provider','TBP ID Number','Address','Type of Institution','Classification of Provider','Full Qualification (WTR)','Qualification (Clustered)'].map(h => (
-                  <th key={h} style={{ background: '#888', color: '#fff', fontSize: 7, padding: '2px 3px', border: '1px solid #000' }}>{h}</th>
-                ))}
-              </tr>
-              <tr>
-                {['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)'].map(l => (
-                  <th key={l} style={{ background: '#ffe066', fontSize: 7, padding: '2px 3px', border: '1px solid #000' }}>{l}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {[provider.region, provider.province, provider.district, provider.municipality,
-                  provider.provider_name, provider.tbp_id, provider.address,
-                  provider.institution_type, provider.classification,
-                  provider.full_qualification, provider.qualification_clustered,
-                ].map((v, i) => (
-                  <td key={i} style={{ border: '1px solid #000', padding: '3px 4px', fontSize: 8 }}>{v || ''}</td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+          {/* ── Unified table: 42 columns, 3200px wide ── */}
+          <table style={{ width: '3200px', tableLayout: 'fixed', borderCollapse: 'collapse', background: '#fff' }}>
+            <colgroup>
+              {/* TVET: 9 cols */}
+              <col style={{ width: '55px' }} /><col style={{ width: '55px' }} />
+              <col style={{ width: '50px' }} /><col style={{ width: '65px' }} />
+              <col style={{ width: '90px' }} /><col style={{ width: '60px' }} />
+              <col style={{ width: '90px' }} /><col style={{ width: '65px' }} />
+              <col style={{ width: '65px' }} />
+              {/* Program: 7 cols */}
+              <col style={{ width: '70px' }} /><col style={{ width: '60px' }} />
+              <col style={{ width: '80px' }} /><col style={{ width: '70px' }} />
+              <col style={{ width: '55px' }} /><col style={{ width: '70px' }} />
+              <col style={{ width: '70px' }} />
+              {/* Student: 23 cols */}
+              <col style={{ width: '70px' }} /><col style={{ width: '70px' }} />
+              <col style={{ width: '70px' }} /><col style={{ width: '60px' }} />
+              <col style={{ width: '65px' }} /><col style={{ width: '75px' }} />
+              <col style={{ width: '80px' }} /><col style={{ width: '65px' }} />
+              <col style={{ width: '65px' }} /><col style={{ width: '50px' }} />
+              <col style={{ width: '65px' }} /><col style={{ width: '40px' }} />
+              <col style={{ width: '60px' }} /><col style={{ width: '35px' }} />
+              <col style={{ width: '55px' }} /><col style={{ width: '65px' }} />
+              {/* Training: 7 cols */}
+              <col style={{ width: '65px' }} /><col style={{ width: '60px' }} />
+              <col style={{ width: '55px' }} /><col style={{ width: '60px' }} />
+              <col style={{ width: '60px' }} /><col style={{ width: '65px' }} />
+              <col style={{ width: '65px' }} />
+              {/* Employment: 3 cols */}
+              <col style={{ width: '60px' }} /><col style={{ width: '70px' }} />
+              <col style={{ width: '70px' }} />
+            </colgroup>
 
-          {/* ── Main data table ── */}
-          <table>
             <thead>
-              {/* Section color headers */}
+              {/* Section group headers */}
               <tr>
-                <td colSpan={5}  style={{ background: '#f4a7b9', textAlign: 'center', fontWeight: 'bold', padding: '3px', border: '1px solid #000', fontSize: 8 }}>Program Profile</td>
-                <td colSpan={13} style={{ background: '#90ee90', textAlign: 'center', fontWeight: 'bold', padding: '3px', border: '1px solid #000', fontSize: 8 }}>Students Profile</td>
-                <td colSpan={7}  style={{ background: '#90ee90', textAlign: 'center', fontWeight: 'bold', padding: '3px', border: '1px solid #000', fontSize: 8 }}>&nbsp;</td>
-                <td colSpan={3}  style={{ background: '#add8e6', textAlign: 'center', fontWeight: 'bold', padding: '3px', border: '1px solid #000', fontSize: 8 }}>Employment</td>
+                <td colSpan={9} style={{ background: '#f4a7b9', textAlign: 'center', fontWeight: 'bold', fontSize: 7, padding: '3px', border: '1px solid #000', color: '#000' }}>TVET Providers Profile</td>
+                <td colSpan={7}  style={{ background: '#ffd966', textAlign: 'center', fontWeight: 'bold', fontSize: 7, padding: '3px', border: '1px solid #000', color: '#000' }}>Program Profile</td>
+                <td colSpan={23} style={{ background: '#90ee90', textAlign: 'center', fontWeight: 'bold', fontSize: 7, padding: '3px', border: '1px solid #000', color: '#000' }}>Students Profile</td>
+                <td colSpan={3}  style={{ background: '#c9daf8', textAlign: 'center', fontWeight: 'bold', fontSize: 7, padding: '3px', border: '1px solid #000', color: '#000' }}>Employment</td>
               </tr>
+
               {/* Column names */}
               <tr>
                 {[
-                  'Qualification (NTR)','CoPR Number','Delivery Mode','Industry Sector of Qualification','Others, Please Specify',
-                  'Student ID Number','Family/Last Name','First Name','Middle Name','Contact Number','Email',
-                  'Street No. and Street Address','Barangay','Municipality/City','District','Province',
-                  'Sex','Date of Birth (mm-dd-yy)','Age','Civil Status','Highest Educational Attainment',
+                  'Region','Province','District','Municipality/City','Name of Provider',
+                  'TBP ID Number','Address','Type of Institution','Classification of Provider',
+                  'Full Qualification (WTR)','Qualification (Clustered)',
+                  'Qualification (NTR)','CoPR Number','Delivery Mode',
+                  'Industry Sector of Qualification','Others, Please Specify',
+                  'Student ID Number','Family/Last Name','First Name','Middle Name',
+                  'Contact Number','Email','Street No. and Street Address','Barangay',
+                  'Municipality/City','District','Province','Sex',
+                  'Date of Birth (mm-dd-yy)','Age','Civil Status','Highest Educational Attainment',
                   'PGS Training Component','Voucher Number','Client Type',
-                  'Date Started (mm-dd-yy)','Date Finished (mm-dd-yy)','Reason for not Finishing','Assessment Results',
+                  'Date Started (mm-dd-yy)','Date Finished (mm-dd-yy)',
+                  'Reason for not Finishing','Assessment Results',
                   'Employment Date (mm-dd-yy)','Name of Employer','Address of Employer',
                 ].map((h, i) => (
-                  <th key={i} style={{ background: '#888', color: '#fff', fontSize: 6, padding: '2px 2px', border: '1px solid #000', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={i} style={colHeaderStyle}>{h}</th>
                 ))}
               </tr>
+
               {/* Column letters */}
               <tr>
-                {['(l)','(m)','(n)','(o)','(p)',
-                  '(q)','','','','(u)','(v)','(w)','(x)','(y)','(z)','(aa)',
-                  '(ac)','(ad)','(ae)','(af)','(ag)',
+                {[
+                  '(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)',
+                  '(j)','(k)','(l)','(m)','(n)','(o)','(p)',
+                  '(q)','(r)','(s)','(t)','(u)','(v)','(w)','(x)','(y)','(z)','(aa)','(ac)',
+                  '(ad)','(ae)','(af)','(ag)',
                   '(ai)','(aj)','(ak)','(al)','(am)','(an)','(ao)',
                   '(ap)','(aq)','(ar)',
                 ].map((l, i) => (
-                  <th key={i} style={{ background: '#ffe066', fontSize: 6.5, padding: '2px 2px', border: '1px solid #000' }}>{l}</th>
+                  <th key={i} style={colLetterStyle}>{l}</th>
                 ))}
               </tr>
             </thead>
+
             <tbody>
               {applicants.map((r: any, idx) => {
                 const ex  = extras[r.id] ?? emptyExtra(r.id);
                 const sid = ex.student_id_number || suggestId(idx);
-                const cells = [
-                  // Program (same for all rows)
-                  programInfo.qualification_ntr,
-                  programInfo.copr_number,
-                  courseName,
-                  programInfo.industry_sector !== 'Others' ? programInfo.industry_sector : '',
-                  programInfo.industry_sector === 'Others' ? programInfo.industry_sector_other : '',
-                  // Student profile — from registration
+
+                const allCells = [
+                  // ── TVET per trainee ──
+                  ex.region, ex.province, ex.district, ex.municipality,
+                  ex.provider_name, ex.tbp_id, ex.address,
+                  ex.institution_type, ex.classification,
+                  // ── Program per trainee ──
+                  ex.full_qualification, ex.qualification_clustered,
+                  ex.qualification_ntr, ex.copr_number,
+                  ex.delivery_mode || selectedCourse?.name || '',
+                  ex.industry_sector !== 'Others' ? ex.industry_sector : '',
+                  ex.industry_sector === 'Others' ? ex.industry_sector_other : '',
+                  // ── Student (from registration) ──
                   sid,
-                  r.last_name,
-                  r.first_name,
-                  r.middle_name || '',
-                  r.contact_no  || '',
-                  r.email       || '',
+                  r.last_name        || '',
+                  r.first_name       || '',
+                  r.middle_name      || '',
+                  r.contact_no       || '',
+                  r.email            || '',
                   [r.address_street, r.address_subdivision].filter(Boolean).join(', '),
-                  r.address_barangay  || '',
-                  r.address_city      || '',
-                  '',                        // district (not in registration schema)
-                  r.address_province  || '',
-                  r.sex               || '',
+                  r.address_barangay || '',
+                  r.address_city     || '',
+                  '',                          // district (not in registration schema)
+                  r.address_province || '',
+                  r.sex              || '',
                   dob(r),
-                  r.age               || '',
-                  r.civil_status      || '',
+                  r.age              || '',
+                  r.civil_status     || '',
                   r.educational_attainment || '',
-                  // Training — from extras
-                  ex.pgs_training_component,
-                  ex.voucher_number,
-                  ex.client_type,
-                  ex.date_started,
-                  ex.date_finished,
-                  ex.reason_not_finishing,
-                  ex.assessment_results,
-                  // Employment
-                  ex.employment_date,
-                  ex.employer_name,
-                  ex.employer_address,
+                  // ── Training ──
+                  ex.pgs_training_component || '',
+                  ex.voucher_number         || '',
+                  ex.client_type            || '',
+                  ex.date_started           || '',
+                  ex.date_finished          || '',
+                  ex.reason_not_finishing   || '',
+                  ex.assessment_results     || '',
+                  // ── Employment ──
+                  ex.employment_date  || '',
+                  ex.employer_name    || '',
+                  ex.employer_address || '',
                 ];
+
                 return (
                   <tr key={r.id}>
-                    {cells.map((v, i) => (
-                      <td key={i} style={{ border: '1px solid #000', padding: '2px 3px', fontSize: 7.5 }}>{v || ''}</td>
+                    {allCells.map((v, i) => (
+                      <td key={i} style={cellStyle}>{v}</td>
                     ))}
                   </tr>
                 );
               })}
-              {/* Blank padding rows (min 3 rows visible) */}
+
+              {/* Blank padding rows */}
               {[...Array(Math.max(0, 3 - applicants.length))].map((_, i) => (
                 <tr key={`blank-${i}`}>
-                  {[...Array(31)].map((_, j) => (
-                    <td key={j} style={{ border: '1px solid #000', padding: '10px 3px' }}>&nbsp;</td>
+                  {[...Array(42)].map((_, j) => (
+                    <td key={j} style={cellStyle}>&nbsp;</td>
                   ))}
                 </tr>
               ))}
@@ -828,23 +1026,31 @@ function StepReviewPrint({
           </table>
 
           {/* Signatories */}
-          <table style={{ width: '100%', marginTop: 16, borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                {[
-                  { pre: 'Prepared by:',       name: provider.prepared_by_left,  bottom: false },
-                  { pre: 'Prepared by:',       name: provider.prepared_by_right, bottom: false },
-                  { pre: 'NCLC Administrator', name: provider.nclc_admin,        bottom: true  },
-                ].map((s, i) => (
-                  <td key={i} style={{ width: '33%', padding: '0 8px', verticalAlign: 'bottom', border: 'none', textAlign: s.bottom ? 'right' : 'left' }}>
-                    {!s.bottom && <div style={{ fontSize: 7, color: '#555', marginBottom: 24 }}>{s.pre}</div>}
-                    <div style={{ borderTop: '1px solid #000', paddingTop: 2, fontSize: 9, fontWeight: 'bold' }}>{s.name || ''}</div>
-                    {s.bottom && <div style={{ fontSize: 7, color: '#555', marginTop: 2 }}>{s.pre}</div>}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+          <div style={{ marginTop: 14, display: 'flex', gap: 24, width: '600px' }}>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: '6.5px', color: '#555', marginBottom: 8 }}>Prepared by:</div>
+              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#000', marginBottom: 2 }}>
+                {provider.prepared_by_left || ''}
+              </div>
+              <div style={{ fontSize: '6.5px', color: '#555' }}>Trainer</div>
+            </div>
+            {provider.prepared_by_right && (
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '6.5px', color: '#555', marginBottom: 8 }}>Prepared by:</div>
+                <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#000', marginBottom: 2 }}>
+                  {provider.prepared_by_right}
+                </div>
+                <div style={{ fontSize: '6.5px', color: '#555' }}>Trainer</div>
+              </div>
+            )}
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: '6.5px', marginBottom: 8, visibility: 'hidden' }}>Prepared by:</div>
+              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#000', marginBottom: 2 }}>
+                {provider.nclc_admin || ''}
+              </div>
+              <div style={{ fontSize: '6.5px', color: '#555' }}>NCLC Administrator</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -854,13 +1060,39 @@ function StepReviewPrint({
 // ─────────────────────────────────────────────────────────────────────────────
 // Reports List
 // ─────────────────────────────────────────────────────────────────────────────
-function ReportsList({ onNew, onView }: { onNew: () => void; onView: (id: number) => void }) {
-  const [search, setSearch] = useState('');
-  const [page, setPage]     = useState(1);
+function ReportsList({ onNew, onView, onEdit }: { onNew: () => void; onView: (id: number) => void; onEdit: (id: number) => void }) {
+  const queryClient = useQueryClient();
+  const [search, setSearch]   = useState('');
+  const [page, setPage]       = useState(1);
+  const [tab, setTab]         = useState<'active' | 'archived'>('active');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
+  const [minTrainees, setMinTrainees] = useState('');
+  const [maxTrainees, setMaxTrainees] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: number; title: string } | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<{ id: number; title: string } | null>(null);
+
+  const hasActiveFilters = !!(dateFrom || dateTo || minTrainees || maxTrainees);
+
+  function clearFilters() {
+    setDateFrom(''); setDateTo('');
+    setMinTrainees(''); setMaxTrainees('');
+    setPage(1);
+  }
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['reports', page, search],
-    queryFn: () => api.get('/reports', { params: { page, limit: 15, search } }).then(r => r.data),
+    queryKey: ['reports', page, search, tab, dateFrom, dateTo, minTrainees, maxTrainees],
+    queryFn: () => api.get('/reports', {
+      params: {
+        page, limit: 15, search,
+        archived: tab === 'archived' ? true : undefined,
+        date_from:    dateFrom    || undefined,
+        date_to:      dateTo      || undefined,
+        min_trainees: minTrainees || undefined,
+        max_trainees: maxTrainees || undefined,
+      }
+    }).then(r => r.data),
     staleTime: 10000,
   });
 
@@ -869,45 +1101,186 @@ function ReportsList({ onNew, onView }: { onNew: () => void; onView: (id: number
   const total           = data?.total || 0;
 
   async function archive(id: number) {
-    try { await api.patch(`/reports/${id}/archive`); toast.success('Archived.'); refetch(); }
-    catch { toast.error('Failed to archive.'); }
+    try {
+      await api.patch(`/reports/${id}/archive`);
+      toast.success('Archived.');
+      await queryClient.invalidateQueries({ queryKey: ['reports'] });
+    } catch { toast.error('Failed to archive.'); }
+  }
+
+  async function restore(id: number) {
+    try {
+      await api.patch(`/reports/${id}/restore`);
+      toast.success('Restored.');
+      await queryClient.invalidateQueries({ queryKey: ['reports'] });
+    } catch { toast.error('Failed to restore.'); }
   }
 
   return (
     <div>
+      <ConfirmModal
+        open={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={async () => {
+          if (archiveTarget) {
+            await archive(archiveTarget.id);
+            setArchiveTarget(null);
+          }
+        }}
+        title="Archive Report?"
+        description={`"${archiveTarget?.title}" will be hidden from the list. You can restore it from the Archived tab.`}
+        confirmLabel="Archive"
+      />
+      <ConfirmModal
+        open={!!restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={async () => {
+          if (restoreTarget) {
+            await restore(restoreTarget.id);
+            setRestoreTarget(null);
+          }
+        }}
+        title="Restore Report?"
+        description={`"${restoreTarget?.title}" will be moved back to the active list.`}
+        confirmLabel="Restore"
+      />
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="section-title">Reports</h1>
-          <p className="text-sm text-text-muted mt-1">{total} saved report{total !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-text-muted mt-1">{total} {tab} report{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => refetch()} className="btn-ghost text-sm"><RefreshCw size={14} /></button>
-          <button onClick={onNew} className="btn-primary text-sm"><Plus size={14} /> New Report</button>
+          {tab === 'active' && (
+            <button onClick={onNew} className="btn-primary text-sm"><Plus size={14} /> New Report</button>
+          )}
         </div>
       </div>
 
-      <div className="card p-4 mb-5">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input className="input-base pl-9 text-sm" placeholder="Search reports…"
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-        </div>
+      {/* Active / Archived tabs */}
+      <div className="flex gap-2 mb-4">
+        {(['active', 'archived'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => { setTab(t); setPage(1); }}
+            className={clsx(
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize',
+              tab === t ? 'btn-primary' : 'btn-ghost'
+            )}
+          >
+            {t === 'archived' && <Archive size={13} />}
+            {t === 'active' ? 'Active' : 'Archived'}
+          </button>
+        ))}
       </div>
 
+      {/* Search + filter bar */}
+      <div className="card p-4 mb-5 space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input
+              className="input-base pl-9 text-sm w-full"
+              placeholder="Search by title or program…"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            className={clsx('btn-ghost text-sm gap-2 shrink-0', hasActiveFilters && 'text-accent border-accent')}
+          >
+            <ChevronDown size={14} className={clsx('transition-transform', showFilters && 'rotate-180')} />
+            Filters
+            {hasActiveFilters && (
+              <span className="w-4 h-4 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold">
+                {[dateFrom, dateTo, minTrainees, maxTrainees].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-2 border-t border-border">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="label text-xs mb-1 block">Date From</label>
+                    <input
+                      type="date" className="input-base text-sm"
+                      value={dateFrom}
+                      onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-xs mb-1 block">Date To</label>
+                    <input
+                      type="date" className="input-base text-sm"
+                      value={dateTo}
+                      onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-xs mb-1 block">Min Trainees</label>
+                    <input
+                      type="number" min="0" className="input-base text-sm"
+                      placeholder="e.g. 5"
+                      value={minTrainees}
+                      onChange={e => { setMinTrainees(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-xs mb-1 block">Max Trainees</label>
+                    <input
+                      type="number" min="0" className="input-base text-sm"
+                      placeholder="e.g. 30"
+                      value={maxTrainees}
+                      onChange={e => { setMaxTrainees(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                </div>
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="btn-ghost text-xs mt-3 text-red-400 hover:text-red-500">
+                    ✕ Clear all filters
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Table */}
       <div className="card overflow-hidden">
         <table className="data-table">
           <thead>
-            <tr><th>Title / Program</th><th>Course</th><th>Trainees</th><th>Created By</th><th>Date</th><th></th></tr>
+            <tr>
+              <th>Title / Program</th><th>Trainees</th><th>Created By</th><th>Date</th><th></th>
+            </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              [...Array(5)].map((_, i) => <tr key={i}>{[...Array(6)].map((_, j) => <td key={j}><div className="skeleton" /></td>)}</tr>)
+              [...Array(5)].map((_, i) => (
+                <tr key={i}>{[...Array(5)].map((_, j) => <td key={j}><div className="skeleton" /></td>)}</tr>
+              ))
             ) : reports.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-16">
-                  <div className="text-4xl mb-3">📋</div>
-                  <div className="text-sm text-text-muted mb-3">No reports yet.</div>
-                  <button onClick={onNew} className="btn-primary text-sm mx-auto"><Plus size={14} /> Create First Report</button>
+                <td colSpan={5} className="text-center py-16">
+                  <div className="text-4xl mb-3">{tab === 'archived' ? '🗄️' : '📋'}</div>
+                  <div className="text-sm text-text-muted mb-3">
+                    {tab === 'archived' ? 'No archived reports.' : 'No reports yet.'}
+                  </div>
+                  {tab === 'active' && (
+                    <button onClick={onNew} className="btn-primary text-sm mx-auto">
+                      <Plus size={14} /> Create First Report
+                    </button>
+                  )}
                 </td>
               </tr>
             ) : reports.map((r: any) => (
@@ -916,22 +1289,48 @@ function ReportsList({ onNew, onView }: { onNew: () => void; onView: (id: number
                   <div className="font-semibold text-sm text-text-primary">{r.title}</div>
                   {r.program_title && <div className="text-xs text-text-muted">{r.program_title}</div>}
                 </td>
-                <td className="text-xs text-text-secondary max-w-[160px] truncate">{r.delivery_mode || '—'}</td>
-                <td><span className="badge badge-blue">{r.trainee_count} trainee{r.trainee_count !== 1 ? 's' : ''}</span></td>
+                <td>
+                  <span className="badge badge-blue">
+                    {r.trainee_count} trainee{r.trainee_count !== 1 ? 's' : ''}
+                  </span>
+                </td>
                 <td className="text-xs text-text-muted">{r.creator_name || '—'}</td>
                 <td className="text-xs text-text-muted">
                   {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </td>
                 <td>
                   <div className="flex items-center gap-1">
-                    <button title="View / Print" onClick={() => onView(r.id)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors">
-                      <Eye size={14} />
-                    </button>
-                    <button title="Archive" onClick={() => archive(r.id)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors">
-                      <Archive size={14} />
-                    </button>
+                    {tab === 'active' ? (
+                      <>
+                       <button
+                          title="View / Print" onClick={() => onView(r.id)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          title="Edit" onClick={() => onEdit(r.id)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-amber-400 transition-colors"
+                        >
+                          <Save size={14} />
+                        </button>
+                        <button
+                          title="Archive"
+                          onClick={() => setArchiveTarget({ id: r.id, title: r.title })}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors"
+                        >
+                          <Archive size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        title="Restore"
+                        onClick={() => setRestoreTarget({ id: r.id, title: r.title })}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-green-500 transition-colors"
+                      >
+                        <RefreshCw size={14} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -955,14 +1354,23 @@ function ReportsList({ onNew, onView }: { onNew: () => void; onView: (id: number
 // ─────────────────────────────────────────────────────────────────────────────
 // Report Wizard
 // ─────────────────────────────────────────────────────────────────────────────
-function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initialReportId?: number }) {
+function ReportWizard({ onDone, initialReportId, startAtStep }: { onDone: () => void; initialReportId?: number; startAtStep?: number }) {
   const queryClient = useQueryClient();
-  const [step, setStep]     = useState(0);
+
+  const [step, setStep] = useState(0);
+  const [maxStep, setMaxStep] = useState(0);
+
+  function goToStep(n: number) {
+    setStep(n);
+    setMaxStep(prev => Math.max(prev, n));
+  }
+
   const [saving, setSaving] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [savedReportId, setSavedReportId] = useState<number | null>(initialReportId ?? null);
   const [loaded, setLoaded] = useState(false);
 
-  // Step 0
+  // Step 0 — sector for Student ID code only
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [programInfo, setProgramInfo]       = useState<ProgramInfo>({
     qualification_ntr: '', copr_number: '', industry_sector: '', industry_sector_other: '',
@@ -974,14 +1382,13 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
   // Step 2
   const [extras, setExtras] = useState<Record<number, TraineeExtra>>({});
 
-  // Step 3
+  // Step 3 — only signatories + report title
   const [provider, setProvider] = useState<ProviderInfo>({
-    title: 'ENROLLMENT/TERMINAL REPORT', program_title: '',
-    region: 'REGION 4A', province: 'CAVITE', district: 'District I', municipality: 'Noveleta',
-    provider_name: 'Noveleta Training Center', tbp_id: '',
-    address: 'Poblacion, Noveleta Cavite', institution_type: 'Public', classification: 'LGU',
-    full_qualification: '', qualification_clustered: '',
-    prepared_by_left: '', prepared_by_right: '', nclc_admin: '',
+    title: 'ENROLLMENT/TERMINAL REPORT',
+    program_title: '',
+    prepared_by_left: '',
+    prepared_by_right: '',
+    nclc_admin: '',
   });
 
   // Load existing report when viewing
@@ -995,22 +1402,11 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
     if (!existingReport || loaded) return;
     setLoaded(true);
     setProvider({
-      title:                  existingReport.title                  || '',
-      program_title:          existingReport.program_title          || '',
-      region:                 existingReport.region                 || '',
-      province:               existingReport.province               || '',
-      district:               existingReport.district               || '',
-      municipality:           existingReport.municipality           || '',
-      provider_name:          existingReport.provider_name          || '',
-      tbp_id:                 existingReport.tbp_id                 || '',
-      address:                existingReport.address                || '',
-      institution_type:       existingReport.institution_type       || '',
-      classification:         existingReport.classification         || '',
-      full_qualification:     existingReport.full_qualification     || '',
-      qualification_clustered:existingReport.qualification_clustered|| '',
-      prepared_by_left:       existingReport.prepared_by_left       || '',
-      prepared_by_right:      existingReport.prepared_by_right      || '',
-      nclc_admin:             existingReport.nclc_admin             || '',
+      title:             existingReport.title             || '',
+      program_title:     existingReport.program_title     || '',
+      prepared_by_left:  existingReport.prepared_by_left  || '',
+      prepared_by_right: existingReport.prepared_by_right || '',
+      nclc_admin:        existingReport.nclc_admin        || '',
     });
     setProgramInfo({
       qualification_ntr:     existingReport.qualification_ntr     || '',
@@ -1018,29 +1414,46 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
       industry_sector:       existingReport.industry_sector       || '',
       industry_sector_other: existingReport.industry_sector_other || '',
     });
-    setSelectedCourse({ id: null, name: existingReport.delivery_mode, sector: existingReport.industry_sector });
+    setSelectedCourse({ id: existingReport.course_id ?? null, name: existingReport.delivery_mode, sector: existingReport.industry_sector });
     if (existingReport.trainees?.length) {
       setSelectedIds(existingReport.trainees.map((t: any) => t.registration_id));
       const newExtras: Record<number, TraineeExtra> = {};
       for (const t of existingReport.trainees) {
         newExtras[t.registration_id] = {
-          registration_id:        t.registration_id,
-          student_id_number:      t.student_id_number      || '',
-          pgs_training_component: t.pgs_training_component || '',
-          voucher_number:         t.voucher_number         || '',
-          client_type:            t.client_type            || '',
-          date_started:           t.date_started           || '',
-          date_finished:          t.date_finished          || '',
-          reason_not_finishing:   t.reason_not_finishing   || '',
-          assessment_results:     t.assessment_results     || '',
-          employment_date:        t.employment_date        || '',
-          employer_name:          t.employer_name          || '',
-          employer_address:       t.employer_address       || '',
+          registration_id:         t.registration_id,
+          student_id_number:       t.student_id_number      || '',
+          pgs_training_component:  t.pgs_training_component || '',
+          voucher_number:          t.voucher_number         || '',
+          client_type:             t.client_type            || '',
+          date_started:            t.date_started           || '',
+          date_finished:           t.date_finished          || '',
+          reason_not_finishing:    t.reason_not_finishing   || '',
+          assessment_results:      t.assessment_results     || '',
+          employment_date:         t.employment_date        || '',
+          employer_name:           t.employer_name          || '',
+          employer_address:        t.employer_address       || '',
+          // per-trainee provider (load from trainee record if available)
+          region:                  t.region                 || 'REGION 4A',
+          province:                t.province               || 'CAVITE',
+          district:                t.district               || 'District I',
+          municipality:            t.municipality           || 'Noveleta',
+          provider_name:           t.provider_name          || 'Noveleta Training Center',
+          tbp_id:                  t.tbp_id                 || '',
+          address:                 t.address                || 'Poblacion, Noveleta Cavite',
+          institution_type:        t.institution_type       || 'Public',
+          classification:          t.classification         || 'LGU',
+          full_qualification:      t.full_qualification     || '',
+          qualification_clustered: t.qualification_clustered|| '',
+          qualification_ntr:       t.qualification_ntr      || '',
+          copr_number:             t.copr_number            || '',
+          industry_sector:         t.industry_sector        || '',
+          industry_sector_other:   t.industry_sector_other  || '',
+          delivery_mode:           t.delivery_mode          || '',
         };
       }
       setExtras(newExtras);
     }
-    setStep(4);
+    goToStep(startAtStep !== undefined ? startAtStep : 4);
   }, [existingReport, loaded]);
 
   // Fetch full registration data for selected applicants
@@ -1057,38 +1470,71 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
   );
 
   const sectorCode = useMemo(() => SECTOR_CODES[programInfo.industry_sector] || 'S', [programInfo.industry_sector]);
-  const courseName = selectedCourse?.name || '';
 
   function canProceed(): boolean {
     if (step === 0) return !!(selectedCourse && programInfo.industry_sector);
     if (step === 1) return selectedIds.length > 0;
-    if (step === 3) return !!(provider.provider_name && provider.institution_type);
+    if (step === 2) return selectedIds.every(id => {
+      const ex = extras[id] ?? emptyExtra(id);
+      return !!(ex.client_type && ex.date_started && ex.date_finished);
+    });
+    if (step === 3) return !!(provider.nclc_admin && provider.prepared_by_left);
     return true;
   }
 
   async function handleSaveAndPreview() {
+    if (saving) return;
     const trainees = selectedIds.map((id, idx) => {
       const ex = extras[id] ?? emptyExtra(id);
       return {
-        registration_id:        id,
-        student_id_number:      ex.student_id_number || `NTC-${sectorCode}-${String(idx + 1).padStart(4, '0')}`,
-        pgs_training_component: ex.pgs_training_component,
-        voucher_number:         ex.voucher_number,
-        client_type:            ex.client_type,
-        date_started:           ex.date_started   || null,
-        date_finished:          ex.date_finished  || null,
-        reason_not_finishing:   ex.reason_not_finishing,
-        assessment_results:     ex.assessment_results,
-        employment_date:        ex.employment_date || null,
-        employer_name:          ex.employer_name,
-        employer_address:       ex.employer_address,
+        registration_id:         id,
+        student_id_number:       ex.student_id_number || `NTC-${sectorCode}-${String(idx + 1).padStart(4, '0')}`,
+        pgs_training_component:  ex.pgs_training_component,
+        voucher_number:          ex.voucher_number,
+        client_type:             ex.client_type,
+        date_started:            ex.date_started   || null,
+        date_finished:           ex.date_finished  || null,
+        reason_not_finishing:    ex.reason_not_finishing,
+        assessment_results:      ex.assessment_results,
+        employment_date:         ex.employment_date || null,
+        employer_name:           ex.employer_name,
+        employer_address:        ex.employer_address,
+        // per-trainee provider & program
+        region:                  ex.region,
+        province:                ex.province,
+        district:                ex.district,
+        municipality:            ex.municipality,
+        provider_name:           ex.provider_name,
+        tbp_id:                  ex.tbp_id,
+        address:                 ex.address,
+        institution_type:        ex.institution_type,
+        classification:          ex.classification,
+        full_qualification:      ex.full_qualification,
+        qualification_clustered: ex.qualification_clustered,
+        qualification_ntr:       ex.qualification_ntr,
+        copr_number:             ex.copr_number,
+        industry_sector:         ex.industry_sector,
+        industry_sector_other:   ex.industry_sector_other,
+        delivery_mode:           ex.delivery_mode,
       };
     });
 
     const payload = {
-      ...provider,
-      ...programInfo,
-      delivery_mode: courseName,
+      title:             provider.title,
+      program_title:     provider.program_title,
+      prepared_by_left:  provider.prepared_by_left,
+      prepared_by_right: provider.prepared_by_right,
+      nclc_admin:        provider.nclc_admin,
+      // keep these for backward compat with backend
+      region: '', province: '', district: '', municipality: '',
+      provider_name: '', tbp_id: '', address: '',
+      institution_type: '', classification: '',
+      full_qualification: '', qualification_clustered: '',
+      delivery_mode: selectedCourse?.name || '',
+      qualification_ntr: programInfo.qualification_ntr,
+      copr_number: programInfo.copr_number,
+      industry_sector: programInfo.industry_sector,
+      industry_sector_other: programInfo.industry_sector_other,
       trainees,
     };
 
@@ -1103,7 +1549,7 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
         toast.success('Report saved!');
       }
       await queryClient.invalidateQueries({ queryKey: ['reports'] });
-      setStep(4);
+      goToStep(4);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to save.');
     } finally { setSaving(false); }
@@ -1113,7 +1559,14 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Back + title */}
+    <ConfirmModal
+      open={showSaveConfirm}
+      onClose={() => setShowSaveConfirm(false)}
+      onConfirm={() => { setShowSaveConfirm(false); handleSaveAndPreview(); }}
+      title="Save & Preview Report?"
+      description={`This will ${savedReportId ? 'update the existing' : 'create a new'} report with ${selectedIds.length} trainee${selectedIds.length !== 1 ? 's' : ''}. Continue?`}
+      confirmLabel="Save & Preview"
+    />
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onDone} className="btn-ghost text-sm"><ChevronLeft size={14} /> All Reports</button>
         <div className="flex-1">
@@ -1121,7 +1574,19 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
           <p className="text-sm text-text-muted mt-1">TESDA Enrollment / Terminal Report</p>
         </div>
         {savedReportId && (
-          <span className="text-xs text-green-500 flex items-center gap-1"><CheckCircle2 size={12} /> Saved (ID: {savedReportId})</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-green-500 flex items-center gap-1">
+              <CheckCircle2 size={12} /> Saved (ID: {savedReportId})
+            </span>
+            {step === 4 && (
+              <button
+                className="btn-ghost text-sm gap-2"
+                onClick={() => setStep(0)}
+              >
+                <Pencil size={13} /> Edit Report
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -1131,17 +1596,13 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
           {STEPS.map((s, i) => (
             <div key={s.label} className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => i < step && setStep(i)}
+                onClick={() => i <= maxStep && i !== step && goToStep(i)}
                 className={clsx(
                   'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all',
-                  i === step
-                    ? 'btn-primary'
-                    : i < step
-                    ? 'btn-ghost text-accent border-accent'
-                    : 'opacity-40 cursor-default btn-ghost'
+                  i === step ? 'btn-primary' : i <= maxStep ? 'btn-ghost text-accent border-accent' : 'opacity-40 cursor-default btn-ghost'
                 )}
               >
-                {i < step ? <Check size={12} /> : <s.icon size={12} />}
+                {i < step && i <= maxStep ? <Check size={12} /> : <s.icon size={12} />}
                 {s.label}
               </button>
               {i < STEPS.length - 1 && <ChevronRight size={14} className="text-text-muted shrink-0" />}
@@ -1176,19 +1637,18 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
           )}
           {step === 3 && (
             <motion.div key="s3" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18 }}>
-              <StepProviderProgram
-                provider={provider} setProvider={setProvider}
-                programInfo={programInfo} setProgramInfo={setProgramInfo}
-                courseName={courseName}
-              />
+              <StepSignatories provider={provider} setProvider={setProvider} />
             </motion.div>
           )}
           {step === 4 && (
             <motion.div key="s4" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.18 }}>
               <StepReviewPrint
-                provider={provider} programInfo={programInfo} courseName={courseName}
-                applicants={selectedApplicants} extras={extras}
-                sectorCode={sectorCode} savedReportId={savedReportId}
+                provider={provider}
+                applicants={selectedApplicants}
+                extras={extras}
+                sectorCode={sectorCode}
+                savedReportId={savedReportId}
+                selectedCourse={selectedCourse}
               />
             </motion.div>
           )}
@@ -1197,7 +1657,7 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <button className="btn-ghost text-sm" disabled={step === 0} onClick={() => setStep(s => s - 1)}>
+        <button className="btn-ghost text-sm" disabled={step === 0} onClick={() => goToStep(step - 1)}>
           <ChevronLeft size={14} /> Previous
         </button>
 
@@ -1205,23 +1665,24 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
           {!canProceed() && step < 4 && (
             <span className="text-xs text-amber-500 flex items-center gap-1">
               <AlertCircle size={12} />
-              {step === 0 ? 'Select a course and industry sector'
-               : step === 1 ? 'Select at least one applicant'
-               : step === 3 ? 'Fill required provider fields'
-               : 'Fill required fields'}
+              {step === 0
+                ? 'Select a course and industry sector'
+                : step === 1
+                ? 'Select at least one applicant'
+                : step === 2
+                ? 'All trainees must have Client Type, Date Started, and Date Finished'
+                : 'NCLC Administrator and at least one Prepared By trainer are required'}
             </span>
           )}
 
-          {/* Step 3 → Save then go to preview */}
           {step === 3 && (
-            <button className="btn-primary text-sm" onClick={handleSaveAndPreview} disabled={saving || !canProceed()}>
+            <button className="btn-primary text-sm" onClick={() => setShowSaveConfirm(true)} disabled={saving || !canProceed()}>
               {saving ? 'Saving…' : <><Save size={14} /> Save & Preview</>}
             </button>
           )}
 
-          {/* Steps 0–2: just Next */}
           {step < 3 && (
-            <button className="btn-primary text-sm" disabled={!canProceed()} onClick={() => setStep(s => s + 1)}>
+            <button className="btn-primary text-sm" disabled={!canProceed()} onClick={() => goToStep(step + 1)}>
               Next <ChevronRight size={14} />
             </button>
           )}
@@ -1235,17 +1696,18 @@ function ReportWizard({ onDone, initialReportId }: { onDone: () => void; initial
 // Main export
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Reports() {
-  const [mode, setMode]                 = useState<'list' | 'new' | 'view'>('list');
+  const [mode, setMode]                 = useState<'list' | 'new' | 'view' | 'edit'>('list');
   const [viewReportId, setViewReportId] = useState<number | null>(null);
 
   if (mode === 'new')
     return <ReportWizard onDone={() => setMode('list')} />;
 
-  if (mode === 'view' && viewReportId)
+  if ((mode === 'view' || mode === 'edit') && viewReportId)
     return (
       <ReportWizard
         onDone={() => { setMode('list'); setViewReportId(null); }}
         initialReportId={viewReportId}
+        startAtStep={mode === 'edit' ? 0 : undefined}
       />
     );
 
@@ -1253,6 +1715,7 @@ export default function Reports() {
     <ReportsList
       onNew={() => setMode('new')}
       onView={id => { setViewReportId(id); setMode('view'); }}
+      onEdit={id => { setViewReportId(id); setMode('edit'); }}
     />
   );
 }

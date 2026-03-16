@@ -167,77 +167,84 @@ INSERT IGNORE INTO users (id, username, email, password_hash, role, full_name, s
 -- =============================================
 
 -- Report Header (one per generated report)
+-- Drop and recreate (or just use CREATE TABLE if not exists)
 CREATE TABLE IF NOT EXISTS reports (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-
-  -- Report meta
-  title VARCHAR(255) DEFAULT 'ENROLLMENT/TERMINAL REPORT',
-  program_title VARCHAR(255),
-
-  -- TVET Provider Profile
-  region VARCHAR(100) DEFAULT 'REGION 4A',
-  province VARCHAR(100) DEFAULT 'CAVITE',
-  district VARCHAR(100) DEFAULT 'District I',
-  municipality VARCHAR(100) DEFAULT 'Noveleta',
-  provider_name VARCHAR(255) DEFAULT 'Noveleta Training Center',
-  tbp_id VARCHAR(100),
-  address VARCHAR(255) DEFAULT 'Poblacion, Noveleta Cavite',
-  institution_type ENUM('Public', 'Private', 'TESDA') DEFAULT 'Public',
-  classification VARCHAR(100) DEFAULT 'LGU',
-  full_qualification VARCHAR(255),
-  qualification_clustered VARCHAR(255),
-
-  -- Program Profile
-  qualification_ntr VARCHAR(255),
-  copr_number VARCHAR(100),
-  delivery_mode VARCHAR(255),        -- course name
-  industry_sector VARCHAR(150),
-  industry_sector_other VARCHAR(150),
-
+  id                    INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  title                 VARCHAR(255)    NOT NULL DEFAULT 'ENROLLMENT/TERMINAL REPORT',
+  program_title         VARCHAR(255)    NULL,
+  -- Report-level TVET Provider (kept for backward compat, now mostly empty)
+  region                VARCHAR(100)    NULL,
+  province              VARCHAR(100)    NULL,
+  district              VARCHAR(100)    NULL,
+  municipality          VARCHAR(100)    NULL,
+  provider_name         VARCHAR(200)    NULL,
+  tbp_id                VARCHAR(100)    NULL,
+  address               TEXT            NULL,
+  institution_type      VARCHAR(50)     NULL,
+  classification        VARCHAR(100)    NULL,
+  full_qualification    VARCHAR(200)    NULL,
+  qualification_clustered VARCHAR(200)  NULL,
+  -- Report-level Program Profile
+  delivery_mode         VARCHAR(200)    NULL,
+  qualification_ntr     VARCHAR(200)    NULL,
+  copr_number           VARCHAR(100)    NULL,
+  industry_sector       VARCHAR(200)    NULL,
+  industry_sector_other VARCHAR(200)    NULL,
   -- Signatories
-  prepared_by_left VARCHAR(255),
-  prepared_by_right VARCHAR(255),
-  nclc_admin VARCHAR(255),
-
+  prepared_by_left      VARCHAR(255)    NULL,
+  prepared_by_right     VARCHAR(255)    NULL,
+  nclc_admin            VARCHAR(255)    NULL,
   -- Meta
-  created_by VARCHAR(9),
-  status ENUM('active', 'archived') DEFAULT 'active',
-  created_at DATETIME DEFAULT NOW(),
-  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+  status                ENUM('active','archived') NOT NULL DEFAULT 'active',
+  created_by            INT UNSIGNED    NULL,
+  created_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_reports_status     (status),
+  KEY idx_reports_created_by (created_by),
+  KEY idx_reports_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-  FOREIGN KEY (created_by) REFERENCES users(id),
-  INDEX idx_status (status),
-  INDEX idx_created_at (created_at)
-);
 
--- Report Trainees (one row per trainee per report)
 CREATE TABLE IF NOT EXISTS report_trainees (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  report_id INT NOT NULL,
-  registration_id INT NOT NULL,       -- links to registration table
-
-  -- Student ID (generated: NTC-XX-0001)
-  student_id_number VARCHAR(50),
-
-  -- Training columns (the "empty" fields from the form)
-  pgs_training_component VARCHAR(255),
-  voucher_number VARCHAR(100),
-  client_type VARCHAR(50),
-  date_started DATE,
-  date_finished DATE,
-  reason_not_finishing TEXT,
-  assessment_results VARCHAR(255),
-
-  -- Employment
-  employment_date DATE,
-  employer_name VARCHAR(255),
-  employer_address VARCHAR(255),
-
-  created_at DATETIME DEFAULT NOW(),
-  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
-
-  FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
-  FOREIGN KEY (registration_id) REFERENCES registration(id),
-  INDEX idx_report_id (report_id),
-  INDEX idx_registration_id (registration_id)
-);
+  id                      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  report_id               INT UNSIGNED  NOT NULL,
+  registration_id         INT UNSIGNED  NOT NULL,
+  -- Student ID
+  student_id_number       VARCHAR(100)  NULL,
+  -- Training fields
+  pgs_training_component  VARCHAR(200)  NULL,
+  voucher_number          VARCHAR(100)  NULL,
+  client_type             VARCHAR(50)   NULL,
+  date_started            DATE          NULL,
+  date_finished           DATE          NULL,
+  reason_not_finishing    TEXT          NULL,
+  assessment_results      VARCHAR(200)  NULL,
+  -- Employment fields
+  employment_date         DATE          NULL,
+  employer_name           VARCHAR(255)  NULL,
+  employer_address        TEXT          NULL,
+  -- Per-trainee TVET Provider Profile
+  region                  VARCHAR(100)  NULL,
+  province                VARCHAR(100)  NULL,
+  district                VARCHAR(100)  NULL,
+  municipality            VARCHAR(100)  NULL,
+  provider_name           VARCHAR(200)  NULL,
+  tbp_id                  VARCHAR(100)  NULL,
+  address                 TEXT          NULL,
+  institution_type        VARCHAR(50)   NULL,
+  classification          VARCHAR(100)  NULL,
+  full_qualification      VARCHAR(200)  NULL,
+  qualification_clustered VARCHAR(200)  NULL,
+  -- Per-trainee Program Profile
+  qualification_ntr       VARCHAR(200)  NULL,
+  copr_number             VARCHAR(100)  NULL,
+  industry_sector         VARCHAR(200)  NULL,
+  industry_sector_other   VARCHAR(200)  NULL,
+  delivery_mode           VARCHAR(200)  NULL,
+  -- Meta
+  created_at              TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_rt_report_id      (report_id),
+  KEY idx_rt_registration_id (registration_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -493,3 +493,26 @@ select.input-base {
   flex-direction: column;
   min-height: 100vh;
 }
+
+/* ============ RECHARTS FIX ============ */
+.recharts-wrapper,
+.recharts-surface {
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+.recharts-wrapper > svg,
+.recharts-surface {
+  background: transparent !important;
+}
+/* Kill ALL internal background rectangles */
+.recharts-rectangle.recharts-bar-background,
+.recharts-cartesian-grid-bg rect,
+.recharts-bar-background-rectangle {
+  fill: transparent !important;
+  display: none !important;
+}
+/* The actual culprit — recharts renders a bg rect as first child of svg */
+.recharts-surface > rect:first-child {
+  display: none !important;
+}

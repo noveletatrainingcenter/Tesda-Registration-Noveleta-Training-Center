@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import clsx from 'clsx';
+import tesdalogo from '@/assets/TESDA-LOGO.png';
 
 const adminNav = [
   { to: '/admin',             icon: LayoutDashboard, label: 'Dashboard',  end: true },
@@ -67,9 +68,11 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-white/[0.07]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent text-white font-bold text-sm">
-              T
-            </div>
+            <img
+              src={tesdalogo}
+              alt="TESDA Logo"
+              className="w-8 h-8 rounded-lg object-cover"
+            />
             <span className="font-bold text-sm text-white">TESDA NTC</span>
           </div>
           <button

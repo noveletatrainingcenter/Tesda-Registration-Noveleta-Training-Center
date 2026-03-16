@@ -1,12 +1,14 @@
 // backend/src/routes/shared/report.routes.js
 import {
-  getReports, getReport, createReport, updateReport, archiveReport,
+  getReports, getReport, createReport, updateReport, archiveReport, restoreReport,
 } from '../../controllers/shared/report.controller.js';
+import { authenticate } from '../../middleware/auth.middleware.js';
 
 export default async function reportRoutes(fastify) {
-  fastify.get   ('/reports',              getReports);
-  fastify.post  ('/reports',              createReport);
-  fastify.get   ('/reports/:id',          getReport);
-  fastify.put   ('/reports/:id',          updateReport);
-  fastify.patch ('/reports/:id/archive',  archiveReport);
+  fastify.get   ('/',          { preHandler: [authenticate] }, getReports);
+  fastify.post  ('/',          { preHandler: [authenticate] }, createReport);
+  fastify.get   ('/:id',       { preHandler: [authenticate] }, getReport);
+  fastify.put   ('/:id',       { preHandler: [authenticate] }, updateReport);
+  fastify.patch ('/:id/archive', { preHandler: [authenticate] }, archiveReport);
+  fastify.patch ('/:id/restore', { preHandler: [authenticate] }, restoreReport);
 }

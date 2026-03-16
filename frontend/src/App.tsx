@@ -22,23 +22,34 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 
   return <>{children}</>;
 }
 
+// If already logged in, skip Welcome and go straight to dashboard
+function HomeRedirect() {
+  const { isAuthenticated, user } = useAuthStore();
+  if (isAuthenticated && user) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/encoder'} replace />;
+  }
+  return <WelcomePage />;
+}
+
+// If already logged in, skip Login and go straight to dashboard
+function LoginRedirect() {
+  const { isAuthenticated, user } = useAuthStore();
+  if (isAuthenticated && user) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/encoder'} replace />;
+  }
+  return <LoginPage />;
+}
+
 export default function App() {
   useThemeStore();
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<WelcomePage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/"      element={<HomeRedirect />} />
+        <Route path="/login" element={<LoginRedirect />} />
 
         {/* Admin */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute role="admin">
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
+        <Route path="/admin" element={<ProtectedRoute role="admin"><DashboardLayout /></ProtectedRoute>}>
           <Route index element={<AdminHome />} />
           <Route path="applicants"     element={<Applicants />} />
           <Route path="applicants/:id" element={<Applicants />} />
@@ -50,14 +61,7 @@ export default function App() {
         </Route>
 
         {/* Encoder */}
-        <Route
-          path="/encoder"
-          element={
-            <ProtectedRoute role="encoder">
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
+        <Route path="/encoder" element={<ProtectedRoute role="encoder"><DashboardLayout /></ProtectedRoute>}>
           <Route index element={<EncoderHome />} />
           <Route path="applicants"     element={<Applicants />} />
           <Route path="applicants/:id" element={<Applicants />} />

@@ -1,100 +1,195 @@
-// frontend/src/pages/Welcome.tsx
-import { useNavigate } from 'react-router-dom';
+// frontend/src/pages/admin/Home.tsx
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ChevronRight, Shield, Users, FileText, BarChart3 } from 'lucide-react';
+import { Users, UserPlus, Calendar, TrendingUp, BookOpen } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import api from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 
-const features = [
-  { icon: Users,    label: 'Learner Registration', desc: 'Complete TESDA MIS form digitally' },
-  { icon: Shield,   label: 'Role-based Access',     desc: 'Admin & Encoder access control' },
-  { icon: FileText, label: 'Digital Records',       desc: 'Organized, searchable database' },
-  { icon: BarChart3,label: 'Reports & Analytics',   desc: 'Insights on registrations & courses' },
-];
+const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-export default function WelcomePage() {
-  const navigate = useNavigate();
+export default function AdminHome() {
+  const { user } = useAuthStore();
+  const { theme } = useThemeStore();
+  const { data, isLoading } = useQuery({
+    queryKey: ['stats'],
+    queryFn: () => api.get('/registrations/stats').then(r => r.data.stats),
+  });
+
+  const tooltipBg     = theme === 'dark' ? '#1a2133' : '#ffffff';
+  const tooltipBorder = theme === 'dark' ? '#1e2d3d' : '#e2e8f0';
+  const tooltipColor  = theme === 'dark' ? '#f0f6ff' : '#0f172a';
+
+  const tooltipStyle = {
+    background:   tooltipBg,
+    border:       `1px solid ${tooltipBorder}`,
+    borderRadius: 10,
+    fontSize:     12,
+    color:        tooltipColor,
+  };
+
+  const statCards = [
+    { label: 'Total Registrations', value: data?.total ?? '—',             icon: Users,    color: '#22c55e' },
+    { label: 'Registered Today',    value: data?.today ?? '—',             icon: UserPlus, color: '#3b82f6' },
+    { label: 'This Month',          value: data?.this_month ?? '—',        icon: Calendar, color: '#f59e0b' },
+    { label: 'Active Courses',      value: data?.by_course?.length ?? '—', icon: BookOpen, color: '#8b5cf6' },
+  ];
+
+  const monthlyData = (data?.monthly || []).map((m: any) => ({
+    name: MONTHS[m.month - 1],
+    count: m.count,
+  }));
+
+  const accentColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+  const cursorFill  = theme === 'dark' ? 'rgba(34,197,94,0.08)' : 'rgba(22,163,74,0.08)';
+  const tickColor   = theme === 'dark' ? '#4a5a7a' : '#94a3b8';
+
+  // Calculate exact pie chart height: chart + legend rows
+  const courseCount   = data?.by_course?.length ?? 0;
+  const legendRows    = Math.min(courseCount, 4);
+  const legendHeight  = legendRows * 32; // 32px per row (py-1.5 + text)
+  const pieChartHeight = 200;
 
   return (
-    <div className="welcome-bg min-h-screen relative overflow-hidden flex flex-col">
-      <div className="grid-overlay absolute inset-0 pointer-events-none" />
-      <div className="welcome-orb-1" />
-      <div className="welcome-orb-2" />
+    <div className="animate-stagger max-w-7xl mx-auto">
 
-      {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-6">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
-          className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent text-white text-lg font-bold">
-            T
-          </div>
-          <div>
-            <div className="font-bold text-sm text-text-primary">TESDA</div>
-            <div className="text-xs text-text-muted">Noveleta Training Center</div>
-          </div>
-        </motion.div>
-        <motion.button initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
-          onClick={() => navigate('/login')} className="btn-ghost text-sm">
-          Sign In <ChevronRight size={14} />
-        </motion.button>
-      </header>
+      <div className="mb-8">
+        <h1 className="section-title">Good day, {user?.full_name} 👋</h1>
+        <p className="text-sm mt-1 text-text-muted">Here's what's happening at Noveleta Training Center.</p>
+      </div>
 
-      {/* Hero */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 py-12">
-
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.6 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold mb-6 bg-accent-light text-accent-text border border-accent/30">
-            <span className="w-2 h-2 rounded-full bg-accent animate-[pulse_2s_infinite]" />
-            MIS Form Digital Registration System
-          </div>
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.6 }}
-          className="font-extrabold leading-[1.1] mb-6 text-text-primary max-w-[800px] [font-size:clamp(2.5rem,6vw,4.5rem)]"
-        >
-          TESDA Learner<br />
-          <span className="text-accent">Registration</span> System
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.6 }}
-          className="text-lg mb-10 max-w-lg text-text-secondary leading-relaxed"
-        >
-          Streamlined digital enrollment for Noveleta Training Center. Fast, organized, and always accessible.
-        </motion.p>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
-          className="flex flex-wrap gap-4 justify-center">
-          <button onClick={() => navigate('/login')} className="btn-primary text-base px-8 py-3">
-            Get Started <ChevronRight size={16} />
-          </button>
-        </motion.div>
-
-        {/* Features grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9, duration: 0.6 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 w-full max-w-3xl"
-        >
-          {features.map((f, i) => (
-            <motion.div
-              key={f.label}
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 + i * 0.1 }}
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="card p-5 text-left cursor-default"
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3 bg-accent-light">
-                <f.icon size={18} className="text-accent" />
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statCards.map((s, i) => (
+          <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }} className="card p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="label mb-1">{s.label}</div>
+                <div className="font-bold text-3xl text-text-primary">
+                  {isLoading ? <span className="animate-pulse">...</span> : s.value}
+                </div>
               </div>
-              <div className="font-semibold text-sm mb-1 text-text-primary">{f.label}</div>
-              <div className="text-xs text-text-muted leading-relaxed">{f.desc}</div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </main>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: `${s.color}20` }}>
+                <s.icon size={20} style={{ color: s.color }} />
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
-      <footer className="relative z-10 text-xs text-text-muted text-center py-6">
-        Technical Education and Skills Development Authority — Noveleta Training Center
-      </footer>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
+
+        {/* Bar Chart */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }} className="card p-6 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingUp size={18} className="text-accent" />
+            <span className="font-semibold text-text-primary">Monthly Registrations</span>
+          </div>
+          {monthlyData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={monthlyData}
+                margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
+                style={{ background: 'transparent' }}
+              >
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: tickColor }}
+                  axisLine={false}
+                  tickLine={false}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  domain={[0, (dataMax: number) => Math.max(dataMax + 1, 4)]}
+                  tick={{ fontSize: 12, fill: tickColor }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  cursor={{ fill: cursorFill }}
+                  contentStyle={tooltipStyle}
+                  labelStyle={{ color: tooltipColor, fontWeight: 600 }}
+                  itemStyle={{ color: accentColor }}
+                />
+                <Bar dataKey="count" fill={accentColor} radius={[6, 6, 0, 0]} maxBarSize={56} background={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-sm text-text-muted">
+              No data available yet
+            </div>
+          )}
+        </motion.div>
+
+        {/* Pie Chart */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }} className="card p-6 flex flex-col lg:self-start">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen size={18} className="text-accent" />
+            <span className="font-semibold text-text-primary">By Course</span>
+          </div>
+
+          {data?.by_course?.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={pieChartHeight}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie
+                    data={data.by_course}
+                    dataKey="count"
+                    nameKey="course"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={75}
+                    label={({ percent }) =>
+                      percent !== undefined && percent < 0.999
+                        ? `${(percent * 100).toFixed(0)}%`
+                        : ''
+                    }
+                    labelLine={false}
+                  >
+                    {data.by_course.map((_: any, i: number) => (
+                      <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    labelStyle={{ color: tooltipColor, fontWeight: 600 }}
+                    itemStyle={{ color: tooltipColor }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Legend — sits flush below chart, no gap */}
+              <div className="mt-3 flex flex-col gap-0.5">
+                {data.by_course.slice(0, 4).map((c: any, i: number) => (
+                  <div key={c.course} className="flex items-center justify-between text-xs py-1.5 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="text-text-secondary leading-snug truncate">
+                        {c.course || 'Not specified'}
+                      </span>
+                    </div>
+                    <span className="font-semibold text-text-primary shrink-0 ml-2">{c.count}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-sm text-text-muted min-h-[220px]">
+              No data available yet
+            </div>
+          )}
+        </motion.div>
+
+      </div>
     </div>
   );
 }

@@ -51,7 +51,7 @@ export default function LoginPage() {
     setError(''); setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { identifier, password, remember_me: rememberMe });
-      setAuth(data.user, data.token);
+      setAuth(data.user, data.token, rememberMe);
       toast.success(`Welcome back, ${data.user.full_name}!`);
       navigate(data.user.role === 'admin' ? '/admin' : '/encoder');
     } catch (err: any) {

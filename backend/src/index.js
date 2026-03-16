@@ -40,8 +40,8 @@ await fastify.register(cookie);
 await fastify.register(authRoutes,          { prefix: '/api/auth' });
 await fastify.register(accountRoutes,       { prefix: '/api/account' });
 await fastify.register(registrationRoutes,  { prefix: '/api/registrations' });
-fastify.register(courseRoutes,  { prefix: '/api/courses'  });
-fastify.register(reportRoutes,  { prefix: '/api/reports' }); 
+await fastify.register(courseRoutes,  { prefix: '/api/courses'  });
+await fastify.register(reportRoutes,  { prefix: '/api/reports' }); 
 
 // ── Admin routes ──────────────────────────────────────────────────────────
 await fastify.register(userRoutes,   { prefix: '/api/admin/users' });
