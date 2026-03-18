@@ -7,21 +7,24 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach JWT token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('tesda_token');
+  const token = localStorage.getItem('tesda_token') || sessionStorage.getItem('tesda_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Handle 401 globally
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('tesda_token');
       localStorage.removeItem('tesda_user');
-      window.location.href = '/login';
+      sessionStorage.removeItem('tesda_token');
+      sessionStorage.removeItem('tesda_user');
+      const publicPaths = ['/', '/login'];
+      if (!publicPaths.includes(window.location.pathname)) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }

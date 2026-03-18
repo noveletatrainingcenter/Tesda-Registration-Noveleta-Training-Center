@@ -15,25 +15,30 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
-  const [step, setStep]           = useState<Step>('identify');
-  const [role, setRole]           = useState<Role>(null);
-  const [fullName, setFullName]   = useState('');
+  const [step, setStep]             = useState<Step>('identify');
+  const [role, setRole]             = useState<Role>(null);
+  const [fullName, setFullName]     = useState('');
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword]   = useState('');
-  const [showPass, setShowPass]   = useState(false);
+  const [password, setPassword]     = useState('');
+  const [showPass, setShowPass]     = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState('');
 
-  const [fpEmail, setFpEmail]     = useState('');
+  // Admin forgot password
+  const [fpEmail, setFpEmail]       = useState('');
   const [fpQuestion, setFpQuestion] = useState('');
-  const [fpAnswer, setFpAnswer]   = useState('');
-  const [fpNewPass, setFpNewPass] = useState('');
-  const [fpStep, setFpStep]       = useState<'email' | 'answer' | 'done'>('email');
+  const [fpAnswer, setFpAnswer]     = useState('');
+  const [fpNewPass, setFpNewPass]   = useState('');
+  const [fpStep, setFpStep]         = useState<'email' | 'answer' | 'done'>('email');
 
-  const [ticket, setTicket]       = useState('');
-  const [rtNewPass, setRtNewPass] = useState('');
-  const [rtConfirm, setRtConfirm] = useState('');
+  // Encoder reset ticket
+  const [ticket, setTicket]           = useState('');
+  const [rtNewPass, setRtNewPass]     = useState('');
+  const [rtConfirm, setRtConfirm]     = useState('');
+  const [rtStep, setRtStep]           = useState<'ticket' | 'password' | 'done'>('ticket');
+  const [showRtPass, setShowRtPass]   = useState(false);
+  const [showRtConfirm, setShowRtConfirm] = useState(false);
 
   async function handleDetect() {
     if (!identifier.trim()) return setError('Please enter your Employee ID, Username, or Email.');
@@ -76,12 +81,15 @@ export default function LoginPage() {
 
   async function handleResetTicket() {
     if (rtNewPass !== rtConfirm) return setError('Passwords do not match.');
-    if (!ticket.trim()) return setError('Please enter your reset ticket.');
+    if (!rtNewPass) return setError('Please enter a new password.');
     setError(''); setLoading(true);
     try {
-      await api.post('/auth/reset-ticket/use', { identifier, ticket: ticket.trim().toUpperCase(), new_password: rtNewPass });
-      toast.success('Password reset! You can now login.');
-      setStep('login'); setPassword('');
+      await api.post('/auth/reset-ticket/use', {
+        identifier,
+        ticket: ticket.trim().toUpperCase(),
+        new_password: rtNewPass,
+      });
+      setRtStep('done');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid ticket.');
     } finally { setLoading(false); }
@@ -105,8 +113,10 @@ export default function LoginPage() {
 
         {/* Logo */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-accent text-white text-3xl font-bold mx-auto mb-4"
-            style={{ boxShadow: '0 8px 32px color-mix(in srgb, var(--accent) 40%, transparent)' }}>
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center bg-accent text-white text-3xl font-bold mx-auto mb-4"
+            style={{ boxShadow: '0 8px 32px color-mix(in srgb, var(--accent) 40%, transparent)' }}
+          >
             T
           </div>
           <h1 className="font-bold text-2xl text-text-primary">TESDA Registration</h1>
@@ -122,9 +132,14 @@ export default function LoginPage() {
                 <h2 className="font-bold text-xl text-text-primary mb-1">Welcome back</h2>
                 <p className="text-sm text-text-muted mb-6">Enter your Employee ID, username, or email to continue.</p>
                 <label className="label">Employee ID / Username / Email</label>
-                <input className="input-base mb-4" placeholder="e.g. 202500001 or admin"
-                  value={identifier} onChange={e => setIdentifier(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleDetect()} autoFocus />
+                <input
+                  className="input-base mb-4"
+                  placeholder="e.g. 202500001 or admin"
+                  value={identifier}
+                  onChange={e => setIdentifier(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleDetect()}
+                  autoFocus
+                />
                 {error && (
                   <div className="flex items-center gap-2 text-sm text-red-500 mb-4">
                     <AlertCircle size={14} />{error}
@@ -166,10 +181,15 @@ export default function LoginPage() {
 
                 <label className="label">Password</label>
                 <div className="relative mb-4">
-                  <input className="input-base pr-10" type={showPass ? 'text' : 'password'}
-                    placeholder="Enter your password" value={password}
+                  <input
+                    className="input-base pr-10"
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
                     onChange={e => setPassword(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleLogin()} autoFocus />
+                    onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                    autoFocus
+                  />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
@@ -188,7 +208,11 @@ export default function LoginPage() {
                   <button
                     type="button"
                     className="text-sm font-medium text-accent bg-transparent border-none cursor-pointer p-0"
-                    onClick={() => { setStep(role === 'admin' ? 'forgot-admin' : 'forgot-encoder'); setError(''); }}
+                    onClick={() => {
+                      setStep(role === 'admin' ? 'forgot-admin' : 'forgot-encoder');
+                      setError('');
+                      setRtStep('ticket');
+                    }}
                   >
                     {role === 'admin' ? 'Forgot Password' : 'Use Reset Ticket'}
                   </button>
@@ -261,30 +285,118 @@ export default function LoginPage() {
             {/* RESET TICKET - ENCODER */}
             {step === 'forgot-encoder' && (
               <motion.div key="forgot-encoder" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.3 }}>
-                <button
-                  onClick={() => { setStep('login'); setError(''); }}
-                  className="flex items-center gap-1 text-sm text-text-muted hover:text-text-primary mb-4 bg-transparent border-none cursor-pointer p-0"
-                >
-                  <ArrowLeft size={13} /> Back
-                </button>
-                <h2 className="font-bold text-xl text-text-primary mb-1">Use Reset Ticket</h2>
-                <p className="text-sm text-text-muted mb-6">Enter the 8-character ticket provided by your Admin.</p>
-                <label className="label">Reset Ticket (8 characters)</label>
-                <input
-                  className="input-base mb-4 font-mono tracking-[0.2em] text-center text-lg uppercase"
-                  placeholder="XXXX-XXXX" maxLength={8} value={ticket}
-                  onChange={e => setTicket(e.target.value.toUpperCase())} autoFocus
-                />
-                <label className="label">New Password</label>
-                <input className="input-base mb-4" type="password" placeholder="New password"
-                  value={rtNewPass} onChange={e => setRtNewPass(e.target.value)} />
-                <label className="label">Confirm Password</label>
-                <input className="input-base mb-4" type="password" placeholder="Confirm password"
-                  value={rtConfirm} onChange={e => setRtConfirm(e.target.value)} />
-                {error && <div className="flex items-center gap-2 text-sm text-red-500 mb-4"><AlertCircle size={14} />{error}</div>}
-                <button className="btn-primary w-full justify-center" onClick={handleResetTicket} disabled={loading}>
-                  {loading ? 'Processing...' : 'Reset Password'}
-                </button>
+
+                {/* Sub-step 1: Enter ticket */}
+                {rtStep === 'ticket' && (
+                  <>
+                    <button
+                      onClick={() => { setStep('login'); setError(''); setTicket(''); }}
+                      className="flex items-center gap-1 text-sm text-text-muted hover:text-text-primary mb-4 bg-transparent border-none cursor-pointer p-0"
+                    >
+                      <ArrowLeft size={13} /> Back
+                    </button>
+                    <h2 className="font-bold text-xl text-text-primary mb-1">Use Reset Ticket</h2>
+                    <p className="text-sm text-text-muted mb-6">Enter the 8-character ticket provided by your Admin.</p>
+                    <label className="label">Reset Ticket (8 characters)</label>
+                    <input
+                      className="input-base mb-4 font-mono tracking-[0.2em] text-center text-lg uppercase"
+                      placeholder="XXXXXXXX"
+                      maxLength={8}
+                      value={ticket}
+                      onChange={e => setTicket(e.target.value.toUpperCase())}
+                      autoFocus
+                    />
+                    {error && <div className="flex items-center gap-2 text-sm text-red-500 mb-4"><AlertCircle size={14} />{error}</div>}
+                    <button
+                      className="btn-primary w-full justify-center"
+                      onClick={() => {
+                        if (ticket.trim().length < 8) return setError('Please enter the full 8-character ticket.');
+                        setError(''); setRtStep('password');
+                      }}
+                    >
+                      Continue <ArrowRight size={15} />
+                    </button>
+                  </>
+                )}
+
+                {/* Sub-step 2: Set new password */}
+                {rtStep === 'password' && (
+                  <>
+                    <button
+                      onClick={() => { setRtStep('ticket'); setError(''); setRtNewPass(''); setRtConfirm(''); }}
+                      className="flex items-center gap-1 text-sm text-text-muted hover:text-text-primary mb-4 bg-transparent border-none cursor-pointer p-0"
+                    >
+                      <ArrowLeft size={13} /> Back
+                    </button>
+                    <h2 className="font-bold text-xl text-text-primary mb-1">Set New Password</h2>
+                    <p className="text-sm text-text-muted mb-6">Choose a new password for your account.</p>
+
+                    <label className="label">New Password</label>
+                    <div className="relative mb-4">
+                      <input
+                        className="input-base pr-10"
+                        type={showRtPass ? 'text' : 'password'}
+                        placeholder="New password"
+                        value={rtNewPass}
+                        onChange={e => setRtNewPass(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRtPass(!showRtPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted bg-transparent border-none cursor-pointer flex items-center"
+                      >
+                        {showRtPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    <label className="label">Confirm Password</label>
+                    <div className="relative mb-4">
+                      <input
+                        className="input-base pr-10"
+                        type={showRtConfirm ? 'text' : 'password'}
+                        placeholder="Confirm password"
+                        value={rtConfirm}
+                        onChange={e => setRtConfirm(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRtConfirm(!showRtConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted bg-transparent border-none cursor-pointer flex items-center"
+                      >
+                        {showRtConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    {error && <div className="flex items-center gap-2 text-sm text-red-500 mb-4"><AlertCircle size={14} />{error}</div>}
+                    <button className="btn-primary w-full justify-center" onClick={handleResetTicket} disabled={loading}>
+                      {loading ? 'Processing...' : 'Confirm Reset'}
+                    </button>
+                  </>
+                )}
+
+                {/* Sub-step 3: Done */}
+                {rtStep === 'done' && (
+                  <div className="text-center py-4">
+                    <CheckCircle size={40} className="text-accent mx-auto mb-3" />
+                    <p className="font-semibold text-text-primary">Password Reset!</p>
+                    <p className="text-sm text-text-muted mt-1 mb-4">You can now log in with your new password.</p>
+                    <button
+                      className="btn-primary w-full justify-center"
+                      onClick={() => {
+                        setStep('login');
+                        setRtStep('ticket');
+                        setTicket('');
+                        setRtNewPass('');
+                        setRtConfirm('');
+                        setPassword('');
+                      }}
+                    >
+                      Back to Login
+                    </button>
+                  </div>
+                )}
+
               </motion.div>
             )}
 

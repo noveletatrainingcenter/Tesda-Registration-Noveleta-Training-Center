@@ -4,12 +4,40 @@ import db from '../../config/db.js';
 import { generateEmployeeId } from '../../utils/helpers.js';
 
 export async function getUsers(request, reply) {
+  const { limit = 15, page = 1, search } = request.query;
+  const pageNum  = parseInt(page);
+  const limitNum = parseInt(limit);
+  const offset   = (pageNum - 1) * limitNum;
+
   try {
+    const conditions = [];
+    const params     = [];
+
+    if (search) {
+      conditions.push('(full_name LIKE ? OR username LIKE ? OR email LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [[{ total }]] = await db.execute(
+      `SELECT COUNT(*) as total FROM users ${where}`,
+      params
+    );
+
     const [rows] = await db.execute(
       `SELECT id, username, email, role, full_name, is_active, last_login, created_at
-       FROM users ORDER BY created_at DESC`
+       FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limitNum, offset]
     );
-    return reply.send({ success: true, data: rows });
+
+    return reply.send({
+      success: true,
+      data:   rows,
+      total:  total,
+      pages:  Math.ceil(total / limitNum) || 1,
+      page:   pageNum,
+    });
   } catch (err) {
     return reply.code(500).send({ success: false, message: 'Server error.' });
   }
@@ -52,6 +80,27 @@ export async function createUser(request, reply) {
 export async function toggleUserStatus(request, reply) {
   const { id } = request.params;
   try {
+    const [[target]] = await db.execute(
+      'SELECT role, is_active FROM users WHERE id = ?',
+      [id]
+    );
+
+    if (!target) {
+      return reply.code(404).send({ success: false, message: 'User not found.' });
+    }
+
+    if (target.role === 'admin' && target.is_active) {
+      const [[{ activeAdminCount }]] = await db.execute(
+        `SELECT COUNT(*) as activeAdminCount FROM users WHERE role = 'admin' AND is_active = 1`
+      );
+      if (activeAdminCount <= 1) {
+        return reply.code(400).send({
+          success: false,
+          message: 'Cannot disable the last active admin account. Create another admin account first.',
+        });
+      }
+    }
+
     await db.execute('UPDATE users SET is_active = NOT is_active WHERE id = ?', [id]);
     await db.execute(
       'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
@@ -60,5 +109,106 @@ export async function toggleUserStatus(request, reply) {
     return reply.send({ success: true, message: 'User status toggled.' });
   } catch (err) {
     return reply.code(500).send({ success: false, message: 'Server error.' });
+  }
+}
+
+export async function updateUser(request, reply) {
+  const { id } = request.params;
+  const { username, email, password, full_name, role, security_question, security_answer } = request.body;
+
+  try {
+    const [[target]] = await db.execute(
+      'SELECT id, role, is_active FROM users WHERE id = ?',
+      [id]
+    );
+    if (!target) {
+      return reply.code(404).send({ success: false, message: 'User not found.' });
+    }
+
+    // Guard: cannot demote the last active admin to encoder
+    if (role && role !== 'admin' && target.role === 'admin' && target.is_active) {
+      const [[{ activeAdminCount }]] = await db.execute(
+        `SELECT COUNT(*) as activeAdminCount FROM users WHERE role = 'admin' AND is_active = 1`
+      );
+      if (activeAdminCount <= 1) {
+        return reply.code(400).send({
+          success: false,
+          message: 'Cannot change the role of the last active admin. Create another admin account first.',
+        });
+      }
+    }
+
+    // Check username uniqueness (excluding current user)
+    if (username) {
+      const [[conflict]] = await db.execute(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [username, id]
+      );
+      if (conflict) {
+        return reply.code(409).send({ success: false, message: 'Username already taken.' });
+      }
+    }
+
+    // Check email uniqueness (excluding current user)
+    if (email) {
+      const [[emailConflict]] = await db.execute(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, id]
+      );
+      if (emailConflict) {
+        return reply.code(409).send({ success: false, message: 'Email already in use.' });
+      }
+    }
+
+    const fields = [];
+    const params = [];
+
+    if (full_name)           { fields.push('full_name = ?');   params.push(full_name); }
+    if (username)            { fields.push('username = ?');    params.push(username); }
+    if (email !== undefined) { fields.push('email = ?');       params.push(email || null); }
+    if (role)                { fields.push('role = ?');        params.push(role); }
+
+    if (password) {
+      const hash = await bcrypt.hash(password, 10);
+      fields.push('password_hash = ?');
+      params.push(hash);
+    }
+
+    if (security_question !== undefined) {
+      fields.push('security_question = ?');
+      params.push(security_question || null);
+    }
+
+    if (security_answer) {
+      const answerHash = await bcrypt.hash(security_answer.toLowerCase().trim(), 10);
+      fields.push('security_answer_hash = ?');
+      params.push(answerHash);
+    }
+
+    if (fields.length === 0) {
+      return reply.code(400).send({ success: false, message: 'No fields to update.' });
+    }
+
+    params.push(id);
+    await db.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
+
+    await db.execute(
+      'INSERT INTO audit_logs (user_id, user_name, action, module, details, ip_address) VALUES (?,?,?,?,?,?)',
+      [
+        request.user.id,
+        request.user.full_name,
+        'UPDATE_USER',
+        'UserManagement',
+        `Updated user ID: ${id} (${full_name || target.id})`,
+        request.ip,
+      ]
+    );
+
+    return reply.send({ success: true, message: 'User updated successfully.' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return reply.code(409).send({ success: false, message: 'Username or email already exists.' });
+    }
+    return reply.code(500).send({ success: false, message: 'Server error: ' + err.message });
   }
 }

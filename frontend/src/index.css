@@ -78,10 +78,10 @@ body {
 }
 
 /* ============ SCROLLBAR ============ */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar { width: 6px; height: 8px; }
+::-webkit-scrollbar-track { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
 /* ============ SELECTION ============ */
 ::selection { background: var(--accent); color: white; }

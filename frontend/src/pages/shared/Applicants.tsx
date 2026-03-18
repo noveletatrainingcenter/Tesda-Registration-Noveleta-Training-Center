@@ -15,6 +15,8 @@ import clsx from 'clsx';
 import AddressSelect, { REGION_OPTIONS, getProvinces, getMunicipalities } from '@/components/AddressSelect';
 import type { AddressValue } from '@/components/AddressSelect';
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 // ─── Registration Form Constants ──────────────────────────────────────────────
 const CIVIL_STATUS     = ['Single', 'Married', 'Separated/Divorced/Annulled', 'Widow/er', 'Common Law/Live-in'];
 const EMP_STATUS       = ['Wage-Employed', 'Underemployed', 'Self-Employed', 'Unemployed'];
@@ -52,7 +54,6 @@ const emptyForm = {
   privacy_consent: false,
 };
 
-// ─── Small form helpers ───────────────────────────────────────────────────────
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
@@ -67,12 +68,8 @@ function Sel({ value, onChange, options, placeholder, disabled }: {
   options: string[]; placeholder?: string; disabled?: boolean;
 }) {
   return (
-    <select
-      className="input-base disabled:opacity-50 disabled:cursor-not-allowed"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      disabled={disabled}
-    >
+    <select className="input-base disabled:opacity-50 disabled:cursor-not-allowed"
+      value={value} onChange={e => onChange(e.target.value)} disabled={disabled}>
       <option value="">{placeholder ?? '— Select —'}</option>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
@@ -80,22 +77,12 @@ function Sel({ value, onChange, options, placeholder, disabled }: {
 }
 
 function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
-  return (
-    <div className="form-section-title">
-      <Icon size={16} />{children}
-    </div>
-  );
+  return <div className="form-section-title"><Icon size={16} />{children}</div>;
 }
 
 // ─── Registration Modal ───────────────────────────────────────────────────────
-function RegistrationModal({
-  editId,
-  onClose,
-  onSuccess,
-}: {
-  editId?: number | null;
-  onClose: () => void;
-  onSuccess: () => void;
+function RegistrationModal({ editId, onClose, onSuccess }: {
+  editId?: number | null; onClose: () => void; onSuccess: () => void;
 }) {
   const isEdit = !!editId;
   const queryClient = useQueryClient();
@@ -114,21 +101,17 @@ function RegistrationModal({
   useEffect(() => {
     if (existing) {
       setForm({
-        ...emptyForm,
-        ...existing,
-        has_disability:   !!existing.has_disability,
-        privacy_consent:  !!existing.privacy_consent,
-        birth_day:        existing.birth_day?.toString()  ?? '',
-        birth_year:       existing.birth_year?.toString() ?? '',
+        ...emptyForm, ...existing,
+        has_disability:  !!existing.has_disability,
+        privacy_consent: !!existing.privacy_consent,
+        birth_day:       existing.birth_day?.toString()  ?? '',
+        birth_year:      existing.birth_year?.toString() ?? '',
         scholarship_other: '',
       });
     }
   }, [existing]);
 
-  // Scroll modal body to top on step change
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [step]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
 
   function set(key: string, val: any) { setForm(f => ({ ...f, [key]: val })); }
   function inp(key: string) {
@@ -143,11 +126,11 @@ function RegistrationModal({
 
   const addressValue: AddressValue = {
     address_subdivision: form.address_subdivision,
-    address_street:      form.address_street,
-    address_barangay:    form.address_barangay,
-    address_city:        form.address_city,
-    address_province:    form.address_province,
-    address_region:      form.address_region,
+    address_street: form.address_street,
+    address_barangay: form.address_barangay,
+    address_city: form.address_city,
+    address_province: form.address_province,
+    address_region: form.address_region,
   };
 
   function handleSubmitClick() {
@@ -176,22 +159,17 @@ function RegistrationModal({
     } finally { setLoading(false); }
   }
 
-  const slide = {
-    enter:  { opacity: 0, x: 24 },
-    center: { opacity: 1, x: 0  },
-    exit:   { opacity: 0, x: -24 },
-  };
+  const slide = { enter: { opacity: 0, x: 24 }, center: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -24 } };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.97, y: 16 }}
-        animate={{ opacity: 1, scale: 1,    y: 0  }}
-        exit={{    opacity: 0, scale: 0.97, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 16 }}
         transition={{ duration: 0.2 }}
         className="card w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl"
       >
-        {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div>
             <h2 className="text-base font-semibold text-text-primary">
@@ -199,15 +177,11 @@ function RegistrationModal({
             </h2>
             <p className="text-xs text-text-muted mt-0.5">TESDA MIS Form 03-01 — Learners Profile Form</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-input transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-input transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        {/* Step indicator */}
         <div className="px-6 py-3 border-b border-border shrink-0 overflow-x-auto">
           <div className="flex items-center gap-2 min-w-max">
             {FORM_STEPS.map((s, i) => (
@@ -216,11 +190,7 @@ function RegistrationModal({
                   onClick={() => i < step && setStep(i)}
                   className={clsx(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                    i === step
-                      ? 'btn-primary'
-                      : i < step
-                      ? 'btn-ghost text-accent border-accent'
-                      : 'opacity-40 cursor-default btn-ghost'
+                    i === step ? 'btn-primary' : i < step ? 'btn-ghost text-accent border-accent' : 'opacity-40 cursor-default btn-ghost'
                   )}
                 >
                   {i < step ? <CheckCircle size={12} /> : <s.icon size={12} />}
@@ -232,27 +202,16 @@ function RegistrationModal({
           </div>
         </div>
 
-        {/* Scrollable body */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5">
           <AnimatePresence mode="wait">
-
-            {/* ── STEP 0 ── */}
             {step === 0 && (
               <motion.div key="s0" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 <SectionTitle icon={User}>Learner / Manpower Profile</SectionTitle>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="md:col-span-2">
-                    <Field label="Last Name" required><input {...inp('last_name')} placeholder="Dela Cruz" /></Field>
-                  </div>
-                  <div>
-                    <Field label="Extension Name"><input {...inp('extension_name')} placeholder="Jr., Sr." /></Field>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Field label="First Name" required><input {...inp('first_name')} placeholder="Juan" /></Field>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Field label="Middle Name"><input {...inp('middle_name')} placeholder="Santos" /></Field>
-                  </div>
+                  <div className="md:col-span-2"><Field label="Last Name" required><input {...inp('last_name')} placeholder="Dela Cruz" /></Field></div>
+                  <div><Field label="Extension Name"><input {...inp('extension_name')} placeholder="Jr., Sr." /></Field></div>
+                  <div className="md:col-span-2"><Field label="First Name" required><input {...inp('first_name')} placeholder="Juan" /></Field></div>
+                  <div className="md:col-span-2"><Field label="Middle Name"><input {...inp('middle_name')} placeholder="Santos" /></Field></div>
                 </div>
                 <SectionTitle icon={MapPin}>Complete Permanent Mailing Address</SectionTitle>
                 <AddressSelect value={addressValue} onChange={updated => setForm(f => ({ ...f, ...updated }))} />
@@ -262,17 +221,12 @@ function RegistrationModal({
                       <input {...inp('email')} type="email" placeholder="juan@email.com" />
                     </Field>
                   </div>
-                  <Field label="Contact No.">
-                    <input {...inp('contact_no')} placeholder="09xxxxxxxxx" />
-                  </Field>
+                  <Field label="Contact No."><input {...inp('contact_no')} placeholder="09xxxxxxxxx" /></Field>
                 </div>
-                <div className="mt-4 max-w-xs">
-                  <Field label="Nationality"><input {...inp('nationality')} /></Field>
-                </div>
+                <div className="mt-4 max-w-xs"><Field label="Nationality"><input {...inp('nationality')} /></Field></div>
               </motion.div>
             )}
 
-            {/* ── STEP 1 ── */}
             {step === 1 && (
               <motion.div key="s1" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 <SectionTitle icon={User}>Personal Information</SectionTitle>
@@ -282,8 +236,7 @@ function RegistrationModal({
                     <div className="flex flex-col gap-2 mt-1">
                       {['Male', 'Female'].map(s => (
                         <label key={s} className="checkbox-label">
-                          <input type="radio" name="sex" value={s} checked={form.sex === s} onChange={() => set('sex', s)} />
-                          {s}
+                          <input type="radio" name="sex" value={s} checked={form.sex === s} onChange={() => set('sex', s)} />{s}
                         </label>
                       ))}
                     </div>
@@ -309,10 +262,7 @@ function RegistrationModal({
                         </label>
                       ))}
                     </div>
-                    <label className="label">
-                      Employment Type
-                      <span className="text-xs font-normal text-text-muted ml-1">(if employed)</span>
-                    </label>
+                    <label className="label">Employment Type <span className="text-xs font-normal text-text-muted ml-1">(if employed)</span></label>
                     <div className="grid grid-cols-2 gap-1 mt-1">
                       {EMP_TYPE.map(t => (
                         <label key={t} className="checkbox-label">
@@ -323,48 +273,27 @@ function RegistrationModal({
                     </div>
                   </div>
                 </div>
-
                 <SectionTitle icon={MapPin}>Birthdate</SectionTitle>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-4 mb-6">
-                  <Field label="Month">
-                    <Sel value={form.birth_month} onChange={v => set('birth_month', v)} options={MONTHS} />
-                  </Field>
-                  <Field label="Day">
-                    <input {...inp('birth_day')} type="number" min={1} max={31} placeholder="15" />
-                  </Field>
-                  <Field label="Year">
-                    <input {...inp('birth_year')} type="number" min={1900} max={new Date().getFullYear()} placeholder="1995" />
-                  </Field>
+                  <Field label="Month"><Sel value={form.birth_month} onChange={v => set('birth_month', v)} options={MONTHS} /></Field>
+                  <Field label="Day"><input {...inp('birth_day')} type="number" min={1} max={31} placeholder="15" /></Field>
+                  <Field label="Year"><input {...inp('birth_year')} type="number" min={1900} max={new Date().getFullYear()} placeholder="1995" /></Field>
                   <Field label="Age">
-                    <input
-                      className="input-base bg-bg-input opacity-60"
-                      readOnly
-                      value={
-                        form.birth_year && form.birth_month && form.birth_day
-                          ? Math.floor((Date.now() - new Date(`${form.birth_month} ${form.birth_day}, ${form.birth_year}`).getTime()) / 31557600000)
-                          : ''
-                      }
-                      placeholder="Auto"
-                    />
+                    <input className="input-base bg-bg-input opacity-60" readOnly placeholder="Auto"
+                      value={form.birth_year && form.birth_month && form.birth_day
+                        ? Math.floor((Date.now() - new Date(`${form.birth_month} ${form.birth_day}, ${form.birth_year}`).getTime()) / 31557600000)
+                        : ''} />
                   </Field>
                 </div>
-
                 <SectionTitle icon={MapPin}>Birthplace</SectionTitle>
                 <div className="grid grid-cols-3 gap-4">
-                  <Field label="Region">
-                    <Sel value={form.birthplace_region} onChange={setBirthRegion} options={REGION_OPTIONS} placeholder="— Select Region —" />
-                  </Field>
-                  <Field label="Province">
-                    <Sel value={form.birthplace_province} onChange={setBirthProvince} options={birthProvinces} placeholder="— Select Province —" disabled={!form.birthplace_region} />
-                  </Field>
-                  <Field label="City / Municipality">
-                    <Sel value={form.birthplace_city} onChange={v => set('birthplace_city', v)} options={birthMunicipalities} placeholder="— Select City —" disabled={!form.birthplace_province} />
-                  </Field>
+                  <Field label="Region"><Sel value={form.birthplace_region} onChange={setBirthRegion} options={REGION_OPTIONS} placeholder="— Select Region —" /></Field>
+                  <Field label="Province"><Sel value={form.birthplace_province} onChange={setBirthProvince} options={birthProvinces} placeholder="— Select Province —" disabled={!form.birthplace_region} /></Field>
+                  <Field label="City / Municipality"><Sel value={form.birthplace_city} onChange={v => set('birthplace_city', v)} options={birthMunicipalities} placeholder="— Select City —" disabled={!form.birthplace_province} /></Field>
                 </div>
               </motion.div>
             )}
 
-            {/* ── STEP 2 ── */}
             {step === 2 && (
               <motion.div key="s2" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 <SectionTitle icon={GraduationCap}>Educational Attainment Before Training</SectionTitle>
@@ -378,17 +307,12 @@ function RegistrationModal({
                 </div>
                 <SectionTitle icon={User}>Parent / Guardian</SectionTitle>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Name">
-                    <input {...inp('parent_guardian_name')} placeholder="Parent/Guardian Full Name" />
-                  </Field>
-                  <Field label="Complete Permanent Mailing Address">
-                    <input {...inp('parent_guardian_address')} placeholder="Complete Address" />
-                  </Field>
+                  <Field label="Name"><input {...inp('parent_guardian_name')} placeholder="Parent/Guardian Full Name" /></Field>
+                  <Field label="Complete Permanent Mailing Address"><input {...inp('parent_guardian_address')} placeholder="Complete Address" /></Field>
                 </div>
               </motion.div>
             )}
 
-            {/* ── STEP 3 ── */}
             {step === 3 && (
               <motion.div key="s3" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 <SectionTitle icon={Tag}>Client Classification</SectionTitle>
@@ -406,14 +330,8 @@ function RegistrationModal({
                     <span className="text-xs text-text-muted italic">For Persons with Disability Only</span>
                   </div>
                   <label className="checkbox-label mb-4">
-                    <input
-                      type="checkbox"
-                      checked={form.has_disability}
-                      onChange={e => {
-                        set('has_disability', e.target.checked);
-                        if (!e.target.checked) { set('disability_type', ''); set('disability_cause', ''); }
-                      }}
-                    />
+                    <input type="checkbox" checked={form.has_disability}
+                      onChange={e => { set('has_disability', e.target.checked); if (!e.target.checked) { set('disability_type', ''); set('disability_cause', ''); } }} />
                     <span className="text-sm">This learner has a disability</span>
                   </label>
                   {form.has_disability && (
@@ -446,19 +364,14 @@ function RegistrationModal({
               </motion.div>
             )}
 
-            {/* ── STEP 4 ── */}
             {step === 4 && (
               <motion.div key="s4" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
                 <SectionTitle icon={Briefcase}>Name of Course / Qualification</SectionTitle>
-                <div className="mb-6">
-                  <input {...inp('course_qualification')} placeholder="e.g. Computer Systems Servicing NC II" />
-                </div>
+                <div className="mb-6"><input {...inp('course_qualification')} placeholder="e.g. Computer Systems Servicing NC II" /></div>
                 <SectionTitle icon={Tag}>Scholarship Package</SectionTitle>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {SCHOLARSHIP_OPTIONS.map(s => (
-                    <button
-                      key={s}
-                      type="button"
+                    <button key={s} type="button"
                       onClick={() => { set('scholarship_type', s); if (s !== 'Others') set('scholarship_other', ''); }}
                       className={clsx(
                         'px-4 py-1.5 rounded-lg text-sm font-medium border transition-all',
@@ -466,19 +379,12 @@ function RegistrationModal({
                           ? 'bg-accent text-white border-accent'
                           : 'bg-transparent text-text-secondary border-border hover:border-accent hover:text-accent'
                       )}
-                    >
-                      {s}
-                    </button>
+                    >{s}</button>
                   ))}
                 </div>
                 {form.scholarship_type === 'Others' && (
-                  <input
-                    className="input-base max-w-sm mb-3"
-                    value={form.scholarship_other}
-                    onChange={e => set('scholarship_other', e.target.value)}
-                    placeholder="Please specify scholarship"
-                    autoFocus
-                  />
+                  <input className="input-base max-w-sm mb-3" value={form.scholarship_other}
+                    onChange={e => set('scholarship_other', e.target.value)} placeholder="Please specify scholarship" autoFocus />
                 )}
                 <div className="mb-6" />
                 <div className="form-section-title border-b border-border pb-3 mb-4">
@@ -502,20 +408,13 @@ function RegistrationModal({
                 </div>
               </motion.div>
             )}
-
           </AnimatePresence>
         </div>
 
-        {/* Modal footer / navigation */}
         <div className="flex justify-between items-center px-6 py-4 border-t border-border shrink-0">
-          <button
-            className="btn-ghost text-sm"
-            disabled={step === 0}
-            onClick={() => setStep(s => s - 1)}
-          >
+          <button className="btn-ghost text-sm" disabled={step === 0} onClick={() => setStep(s => s - 1)}>
             <ChevronLeft size={14} /> Previous
           </button>
-
           {step < FORM_STEPS.length - 1 ? (
             <button className="btn-primary text-sm" onClick={() => setStep(s => s + 1)}>
               Next <ChevronRight size={14} />
@@ -528,15 +427,12 @@ function RegistrationModal({
         </div>
       </motion.div>
 
-      {/* Confirm sub-dialog */}
       <AnimatePresence>
         {showConfirm && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.15 }}
               className="card p-6 max-w-sm w-full mx-4 shadow-2xl"
             >
               <div className="flex items-start justify-between mb-3">
@@ -553,9 +449,7 @@ function RegistrationModal({
                 </button>
               </div>
               <p className="text-sm text-text-muted mb-6 pl-11">
-                {isEdit
-                  ? 'Are you sure you want to update this registration?'
-                  : 'Please confirm all information is correct. A ULI number will be generated upon submission.'}
+                {isEdit ? 'Are you sure you want to update this registration?' : 'Please confirm all information is correct. A ULI number will be generated upon submission.'}
               </p>
               <div className="flex justify-end gap-3">
                 <button className="btn-ghost text-sm" onClick={() => setShowConfirm(false)} disabled={loading}>Cancel</button>
@@ -625,9 +519,7 @@ function ApplicantDetail({ id, onBack, isAdmin }: { id: string; onBack: () => vo
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="btn-ghost text-sm">
-          <ArrowLeft size={14} /> Back
-        </button>
+        <button onClick={onBack} className="btn-ghost text-sm"><ArrowLeft size={14} /> Back</button>
         <div className="flex-1">
           <h1 className="section-title">
             {r.last_name}, {r.first_name} {r.middle_name ? r.middle_name[0] + '.' : ''}
@@ -641,12 +533,8 @@ function ApplicantDetail({ id, onBack, isAdmin }: { id: string; onBack: () => vo
           </button>
         )}
       </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card p-6 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        className="card p-6 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
         {fields.map(([label, value]) => (
           <div key={label}>
             <div className="label text-xs mb-0.5">{label}</div>
@@ -656,17 +544,10 @@ function ApplicantDetail({ id, onBack, isAdmin }: { id: string; onBack: () => vo
           </div>
         ))}
       </motion.div>
-
       <AnimatePresence>
         {editOpen && (
-          <RegistrationModal
-            editId={Number(id)}
-            onClose={() => setEditOpen(false)}
-            onSuccess={() => {
-              setEditOpen(false);
-              queryClient.invalidateQueries({ queryKey: ['registration', id] });
-            }}
-          />
+          <RegistrationModal editId={Number(id)} onClose={() => setEditOpen(false)}
+            onSuccess={() => { setEditOpen(false); queryClient.invalidateQueries({ queryKey: ['registration', id] }); }} />
         )}
       </AnimatePresence>
     </div>
@@ -675,13 +556,14 @@ function ApplicantDetail({ id, onBack, isAdmin }: { id: string; onBack: () => vo
 
 // ─── Main Applicants Page ─────────────────────────────────────────────────────
 export default function Applicants() {
-  const navigate   = useNavigate();
-  const { id }     = useParams();
-  const user       = useAuthStore(state => state.user);
-  const isAdmin    = user?.role === 'admin';
+  const navigate = useNavigate();
+  const { id }   = useParams();
+  const user     = useAuthStore(state => state.user);
+  const isAdmin  = user?.role === 'admin';
 
   const [search,           setSearch]           = useState('');
   const [page,             setPage]             = useState(1);
+  const [limit,            setLimit]            = useState(10);
   const [course,           setCourse]           = useState('');
   const [modalOpen,        setModalOpen]        = useState(false);
   const [confirmArchiveId, setConfirmArchiveId] = useState<number | null>(null);
@@ -689,20 +571,24 @@ export default function Applicants() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['registrations', page, search, course],
+    queryKey: ['registrations', page, limit, search, course],
     queryFn: () =>
-      api.get('/registrations', { params: { page, limit: 15, search, course } }).then(r => r.data),
+      api.get('/registrations', { params: { page, limit, search, course } }).then(r => r.data),
     staleTime: 10000,
     enabled: !id,
   });
 
   const { data: coursesData } = useQuery({
     queryKey: ['courses-filter'],
-    queryFn: () =>
-      api.get('/courses', { params: { status: 'active', limit: 100 } }).then(r => r.data.data),
+    queryFn: () => api.get('/courses', { params: { status: 'active', limit: 100 } }).then(r => r.data.data),
     staleTime: 60000,
     enabled: !id,
   });
+
+  function handleLimitChange(newLimit: number) {
+    setLimit(newLimit);
+    setPage(1);
+  }
 
   async function handleArchive(rid: number) {
     try {
@@ -710,42 +596,30 @@ export default function Applicants() {
       toast.success('Registration archived.');
       setConfirmArchiveId(null);
       refetch();
-    } catch {
-      toast.error('Failed to archive.');
-    }
+    } catch { toast.error('Failed to archive.'); }
   }
 
   const registrations = data?.data  || [];
   const total         = data?.total || 0;
   const pages         = data?.pages || 1;
 
-  // ── Detail view ───────────────────────────────────────────────────────────
   if (id) {
     return (
-      <ApplicantDetail
-        id={id}
-        isAdmin={isAdmin}
-        onBack={() => navigate(isAdmin ? '/admin/applicants' : '/encoder/applicants')}
-      />
+      <ApplicantDetail id={id} isAdmin={isAdmin}
+        onBack={() => navigate(isAdmin ? '/admin/applicants' : '/encoder/applicants')} />
     );
   }
 
-  // ── List view ─────────────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto">
-
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="section-title">Applicants</h1>
-          <p className="text-sm mt-1 text-text-muted">
-            {total} registered learner{total !== 1 ? 's' : ''}
-          </p>
+          <p className="text-sm mt-1 text-text-muted">{total} registered learner{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => refetch()} className="btn-ghost text-sm">
-            <RefreshCw size={14} />
-          </button>
+          <button onClick={() => refetch()} className="btn-ghost text-sm"><RefreshCw size={14} /></button>
           <button onClick={() => setModalOpen(true)} className="btn-primary text-sm">
             <FilePlus size={14} /> New Registration
           </button>
@@ -756,24 +630,15 @@ export default function Applicants() {
       <div className="card p-4 mb-5 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            className="input-base pl-9"
-            placeholder="Search by name, ULI, or contact number…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-          />
+          <input className="input-base pl-9" placeholder="Search by name, ULI, or contact number…"
+            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
         </div>
         <div className="relative">
           <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <select
-            className="input-base pl-9 min-w-[180px]"
-            value={course}
-            onChange={e => { setCourse(e.target.value); setPage(1); }}
-          >
+          <select className="input-base pl-9 min-w-[180px]" value={course}
+            onChange={e => { setCourse(e.target.value); setPage(1); }}>
             <option value="">All Courses</option>
-            {coursesData?.map((c: any) => (
-              <option key={c.id} value={c.name}>{c.name}</option>
-            ))}
+            {coursesData?.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
         </div>
       </div>
@@ -784,25 +649,17 @@ export default function Applicants() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>ULI Number</th>
-                <th>Course</th>
-                <th>Sex</th>
+                <th>Name</th><th>ULI Number</th><th>Course</th><th>Sex</th>
                 {isAdmin && <th>Civil Status</th>}
                 <th>Contact</th>
                 {isAdmin && <th>Encoded By</th>}
-                <th>Date</th>
-                <th></th>
+                <th>Date</th><th>Action</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                [...Array(6)].map((_, i) => (
-                  <tr key={i}>
-                    {[...Array(isAdmin ? 9 : 7)].map((_, j) => (
-                      <td key={j}><div className="skeleton" /></td>
-                    ))}
-                  </tr>
+                [...Array(limit)].map((_, i) => (
+                  <tr key={i}>{[...Array(isAdmin ? 9 : 7)].map((_, j) => <td key={j}><div className="skeleton" /></td>)}</tr>
                 ))
               ) : registrations.length === 0 ? (
                 <tr>
@@ -823,11 +680,7 @@ export default function Applicants() {
                     <div className="text-xs text-text-muted">{r.email || '—'}</div>
                   </td>
                   <td className="font-mono text-xs text-text-secondary">{r.uli_number}</td>
-                  <td>
-                    <div className="text-xs text-text-secondary max-w-[140px] truncate">
-                      {r.course_qualification || '—'}
-                    </div>
-                  </td>
+                  <td><div className="text-xs text-text-secondary max-w-[140px] truncate">{r.course_qualification || '—'}</div></td>
                   <td><span className="badge badge-blue">{r.sex || '—'}</span></td>
                   {isAdmin && <td className="text-xs text-text-secondary">{r.civil_status || '—'}</td>}
                   <td className="text-xs text-text-secondary">{r.contact_no || '—'}</td>
@@ -837,35 +690,21 @@ export default function Applicants() {
                   </td>
                   <td>
                     <div className="flex items-center gap-1">
-                      <button
-                        title="View"
+                      <button title="View"
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors"
-                        onClick={() => navigate(isAdmin ? `/admin/applicants/${r.id}` : `/encoder/applicants/${r.id}`)}
-                      >
+                        onClick={() => navigate(isAdmin ? `/admin/applicants/${r.id}` : `/encoder/applicants/${r.id}`)}>
                         <Eye size={14} />
                       </button>
                       {isAdmin && (
                         confirmArchiveId === r.id ? (
                           <>
-                            <button
-                              className="px-2 h-7 rounded-lg text-xs font-medium btn-ghost"
-                              onClick={() => setConfirmArchiveId(null)}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="px-2 h-7 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white transition-colors"
-                              onClick={() => handleArchive(r.id)}
-                            >
-                              Confirm
-                            </button>
+                            <button className="px-2 h-7 rounded-lg text-xs font-medium btn-ghost" onClick={() => setConfirmArchiveId(null)}>Cancel</button>
+                            <button className="px-2 h-7 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white transition-colors" onClick={() => handleArchive(r.id)}>Confirm</button>
                           </>
                         ) : (
-                          <button
-                            title="Archive"
+                          <button title="Archive"
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors"
-                            onClick={() => setConfirmArchiveId(r.id)}
-                          >
+                            onClick={() => setConfirmArchiveId(r.id)}>
                             <Archive size={14} />
                           </button>
                         )
@@ -878,33 +717,34 @@ export default function Applicants() {
           </table>
         </div>
 
-        {pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <span className="text-xs text-text-muted">
-              Page {page} of {pages} · {total} records
-            </span>
-            <div className="flex gap-2">
-              <button className="btn-ghost text-xs py-1.5 px-3" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                ← Prev
-              </button>
-              <button className="btn-ghost text-xs py-1.5 px-3" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>
-                Next →
-              </button>
-            </div>
+        {/* Pagination */}
+        <div className="flex items-center justify-end gap-4 px-4 py-3 border-t border-border">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted">Rows per page:</span>
+            <select
+              className="text-xs py-1 px-2 rounded-lg border border-border bg-bg-input text-text-primary w-16 cursor-pointer"
+              value={limit}
+              onChange={e => handleLimitChange(Number(e.target.value))}
+            >
+              {PAGE_SIZE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
           </div>
-        )}
+          <span className="text-xs text-text-muted ml-5">
+            {total === 0 ? '0–0 of 0' : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}
+          </span>
+          <button className="btn-ghost text-xs py-1.5 px-3" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft size={13} /> Prev
+          </button>
+          <button className="btn-ghost text-xs py-1.5 px-3" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>
+            Next <ChevronRight size={13} />
+          </button>
+        </div>
       </motion.div>
 
-      {/* Registration Modal */}
       <AnimatePresence>
         {modalOpen && (
-          <RegistrationModal
-            onClose={() => setModalOpen(false)}
-            onSuccess={() => {
-              setModalOpen(false);
-              queryClient.invalidateQueries({ queryKey: ['registrations'] });
-            }}
-          />
+          <RegistrationModal onClose={() => setModalOpen(false)}
+            onSuccess={() => { setModalOpen(false); queryClient.invalidateQueries({ queryKey: ['registrations'] }); }} />
         )}
       </AnimatePresence>
     </div>
