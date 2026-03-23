@@ -4,7 +4,6 @@ import { create } from 'zustand';
 interface User {
   id: string;
   username: string;
-  email?: string;
   role: 'admin' | 'encoder';
   full_name: string;
 }

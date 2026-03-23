@@ -4,6 +4,7 @@ import { sanitize } from '../../utils/helpers.js';
 
 function nullableDate(v) {
   if (!v || v === '') return null;
+  if (v.includes('T')) return v.split('T')[0];
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   const [m, d, y] = v.split('-');
   if (!m || !d || !y) return null;
@@ -25,9 +26,10 @@ export async function getReports(request, reply) {
     if (max_trainees) { where += ` AND (SELECT COUNT(*) FROM report_trainees rt WHERE rt.report_id = r.id) <= ?`; params.push(parseInt(max_trainees)); }
     const [rows] = await db.execute(
       `SELECT r.*, u.full_name AS creator_name,
-        (SELECT COUNT(*) FROM report_trainees rt WHERE rt.report_id = r.id) AS trainee_count
-       FROM reports r LEFT JOIN users u ON r.created_by = u.id
-       ${where} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+        (SELECT COUNT(*) FROM report_trainees rt WHERE rt.report_id = r.id) AS trainee_count,
+        (SELECT COUNT(*) FROM report_trainees rt WHERE rt.report_id = r.id AND rt.date_finished IS NOT NULL AND rt.date_finished <= CURDATE()) AS finished_count
+      FROM reports r LEFT JOIN users u ON r.created_by = u.id
+      ${where} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
       [...params, parseInt(limit), parseInt(offset)]
     );
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM reports r ${where}`, params);
@@ -54,18 +56,32 @@ export async function getReport(request, reply) {
 
     const [trainees] = await db.query(
       `SELECT
-         rt.*,
-         reg.last_name, reg.first_name, reg.middle_name, reg.extension_name,
-         reg.contact_no, reg.email,
-         reg.address_street, reg.address_subdivision,
-         reg.address_barangay, reg.address_city, reg.address_province, reg.address_region,
-         reg.sex, reg.birth_month, reg.birth_day, reg.birth_year, reg.age,
-         reg.civil_status, reg.educational_attainment,
-         reg.employment_status, reg.course_qualification
-       FROM report_trainees rt
-       LEFT JOIN registration reg ON rt.registration_id = reg.id
-       WHERE rt.report_id = ?
-       ORDER BY rt.id ASC`,
+        rt.id, rt.report_id, rt.registration_id,
+        rt.student_id_number, rt.pgs_training_component, rt.voucher_number,
+        rt.client_type,
+        DATE_FORMAT(rt.date_started, '%Y-%m-%d')  AS date_started,
+        DATE_FORMAT(rt.date_finished, '%Y-%m-%d') AS date_finished,
+        rt.reason_not_finishing, rt.assessment_results,
+        DATE_FORMAT(rt.employment_date, '%Y-%m-%d') AS employment_date,
+        rt.employer_name, rt.employer_address,
+        rt.region, rt.province, rt.district, rt.municipality,
+        rt.provider_name, rt.tbp_id, rt.address,
+        rt.institution_type, rt.classification,
+        rt.full_qualification, rt.qualification_clustered,
+        rt.qualification_ntr, rt.copr_number,
+        rt.industry_sector, rt.industry_sector_other, rt.delivery_mode,
+        rt.created_at,
+        reg.last_name, reg.first_name, reg.middle_name, reg.extension_name,
+        reg.contact_no, reg.email,
+        reg.address_street, reg.address_subdivision,
+        reg.address_barangay, reg.address_city, reg.address_province, reg.address_region,
+        reg.sex, reg.birth_month, reg.birth_day, reg.birth_year, reg.age,
+        reg.civil_status, reg.educational_attainment,
+        reg.employment_status, reg.course_qualification
+      FROM report_trainees rt
+      LEFT JOIN registration reg ON rt.registration_id = reg.id
+      WHERE rt.report_id = ?
+      ORDER BY rt.id ASC`,
       [id]
     );
 

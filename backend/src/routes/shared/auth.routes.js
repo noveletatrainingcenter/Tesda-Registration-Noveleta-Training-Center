@@ -2,16 +2,19 @@
 import {
   detectUser, login, logout,
   getSecurityQuestion, adminResetPassword,
-  generateEncoderTicket, useResetTicket,
+  generateEncoderTicket, useResetTicket, validateResetTicket,
+  verifySecurityAnswer,
 } from '../../controllers/shared/auth.controller.js';
 import { authenticate, requireRole } from '../../middleware/auth.middleware.js';
 
 export default async function authRoutes(fastify) {
-  // Public — no preHandler needed
+  // Public
   fastify.post('/detect',                   detectUser);
   fastify.post('/login',                    login);
-  fastify.post('/forgot-password/question', getSecurityQuestion);
-  fastify.post('/forgot-password/reset',    adminResetPassword);
+  fastify.post('/forgot-password/question',       getSecurityQuestion);
+  fastify.post('/forgot-password/verify-answer',  verifySecurityAnswer);
+  fastify.post('/forgot-password/reset',          adminResetPassword);
+  fastify.post('/reset-ticket/validate',    validateResetTicket);
   fastify.post('/reset-ticket/use',         useResetTicket);
 
   // Protected

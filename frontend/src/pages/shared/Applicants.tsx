@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Eye, Archive, Filter, RefreshCw, FilePlus, ArrowLeft,
   Pencil, ChevronRight, ChevronLeft, CheckCircle, User, MapPin,
-  Briefcase, GraduationCap, Tag, AlertCircle, X,
+  Briefcase, GraduationCap, Tag, AlertCircle, X, ChevronDown,
+  RefreshCcw,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '@/lib/api';
@@ -34,6 +35,7 @@ const FORM_STEPS = [
   { label: 'Education',         icon: GraduationCap },
   { label: 'Classification',    icon: Tag },
   { label: 'Course & Consent',  icon: Briefcase },
+  { label: 'Summary',           icon: CheckCircle },
 ];
 
 const emptyForm = {
@@ -147,8 +149,8 @@ function RegistrationModal({ editId, onClose, onSuccess }: {
         await queryClient.invalidateQueries({ queryKey: ['registration', editId] });
         toast.success('Registration updated successfully.');
       } else {
-        const { data } = await api.post('/registrations', form);
-        toast.success(`Registered! ULI: ${data.uli_number}`);
+        await api.post('/registrations', form);
+        toast.success('Registration submitted successfully.');
       }
       await queryClient.invalidateQueries({ queryKey: ['registrations'] });
       setShowConfirm(false);
@@ -408,6 +410,91 @@ function RegistrationModal({ editId, onClose, onSuccess }: {
                 </div>
               </motion.div>
             )}
+
+            {step === 5 && (
+              <motion.div key="s5" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
+                <SectionTitle icon={CheckCircle}>Review & Confirm</SectionTitle>
+                <p className="text-xs text-text-muted mb-5">Please review all information before submitting.</p>
+
+                {[
+                  {
+                    title: 'Profile & Address', icon: User, rows: [
+                      ['Last Name',    form.last_name],
+                      ['First Name',   form.first_name],
+                      ['Middle Name',  form.middle_name],
+                      ['Extension',    form.extension_name],
+                      ['Email',        form.email],
+                      ['Contact No.',  form.contact_no],
+                      ['Nationality',  form.nationality],
+                      ['Region',       form.address_region],
+                      ['Province',     form.address_province],
+                      ['City',         form.address_city],
+                      ['Barangay',     form.address_barangay],
+                      ['Street',       form.address_street],
+                      ['Subdivision',  form.address_subdivision],
+                    ]
+                  },
+                  {
+                    title: 'Personal Info', icon: MapPin, rows: [
+                      ['Sex',               form.sex],
+                      ['Civil Status',      form.civil_status],
+                      ['Employment Status', form.employment_status],
+                      ['Employment Type',   form.employment_type],
+                      ['Birthdate',         form.birth_month && form.birth_day && form.birth_year ? `${form.birth_month} ${form.birth_day}, ${form.birth_year}` : ''],
+                      ['Birthplace',        [form.birthplace_city, form.birthplace_province, form.birthplace_region].filter(Boolean).join(', ')],
+                    ]
+                  },
+                  {
+                    title: 'Education', icon: GraduationCap, rows: [
+                      ['Educational Attainment', form.educational_attainment],
+                      ['Parent / Guardian',      form.parent_guardian_name],
+                      ['Guardian Address',       form.parent_guardian_address],
+                    ]
+                  },
+                  {
+                    title: 'Classification', icon: Tag, rows: [
+                      ['Client Classification', form.client_classification],
+                      ['Has Disability',        form.has_disability ? 'Yes' : 'No'],
+                      ...(form.has_disability ? [
+                        ['Disability Type',  form.disability_type] as [string, string],
+                        ['Disability Cause', form.disability_cause] as [string, string],
+                      ] : []),
+                    ]
+                  },
+                  {
+                    title: 'Course & Consent', icon: Briefcase, rows: [
+                      ['Course / Qualification', form.course_qualification],
+                      ['Scholarship',            form.scholarship_type === 'Others' ? form.scholarship_other : form.scholarship_type],
+                      ['Privacy Consent',        form.privacy_consent ? '✓ Agreed' : '✗ Disagreed'],
+                    ]
+                  },
+                ].map(({ title, icon: Icon, rows }) => (
+                  <div key={title} className="mb-5 border border-border rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-bg-input border-b border-border">
+                      <Icon size={13} className="text-accent" />
+                      <span className="text-xs font-semibold text-text-primary">{title}</span>
+                      <button
+                        type="button"
+                        onClick={() => setStep(FORM_STEPS.findIndex(s => s.label === title))}
+                        className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
+                      >
+                        <Pencil size={11} /> Edit
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
+                      {rows.map(([label, value]) => (
+                        <div key={label}>
+                          <div className="text-[10px] text-text-muted uppercase tracking-wide mb-0.5">{label}</div>
+                          <div className="text-xs text-text-primary font-medium">
+                            {value || <span className="text-text-muted font-normal">—</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -416,7 +503,31 @@ function RegistrationModal({ editId, onClose, onSuccess }: {
             <ChevronLeft size={14} /> Previous
           </button>
           {step < FORM_STEPS.length - 1 ? (
-            <button className="btn-primary text-sm" onClick={() => setStep(s => s + 1)}>
+            <button className="btn-primary text-sm" onClick={() => {
+              // Step 0: Name required
+              if (step === 0) {
+                if (!form.last_name.trim()) return toast.error('Last name is required.');
+                if (!form.first_name.trim()) return toast.error('First name is required.');
+              }
+              // Step 1: Sex, civil status, employment, birthdate required
+              if (step === 1) {
+                if (!form.sex) return toast.error('Sex is required.');
+                if (!form.civil_status) return toast.error('Civil status is required.');
+                if (!form.employment_status) return toast.error('Employment status is required.');
+                if (!form.birth_month || !form.birth_day || !form.birth_year) return toast.error('Complete birthdate is required.');
+              }
+              // Step 2: Educational attainment required
+              if (step === 2) {
+                if (!form.educational_attainment) return toast.error('Educational attainment is required.');
+              }
+              // Step 3: Client classification required
+              if (step === 3) {
+                if (!form.client_classification) return toast.error('Client classification is required.');
+                if (form.has_disability && !form.disability_type) return toast.error('Disability type is required.');
+                if (form.has_disability && !form.disability_cause) return toast.error('Disability cause is required.');
+              }
+              setStep(s => s + 1);
+            }}>
               Next <ChevronRight size={14} />
             </button>
           ) : (
@@ -449,7 +560,7 @@ function RegistrationModal({ editId, onClose, onSuccess }: {
                 </button>
               </div>
               <p className="text-sm text-text-muted mb-6 pl-11">
-                {isEdit ? 'Are you sure you want to update this registration?' : 'Please confirm all information is correct. A ULI number will be generated upon submission.'}
+                {isEdit ? 'Are you sure you want to update this registration?' : 'Please confirm all information is correct before submitting.'}
               </p>
               <div className="flex justify-end gap-3">
                 <button className="btn-ghost text-sm" onClick={() => setShowConfirm(false)} disabled={loading}>Cancel</button>
@@ -525,7 +636,6 @@ function ApplicantDetail({ id, onBack, isAdmin }: { id: string; onBack: () => vo
             {r.last_name}, {r.first_name} {r.middle_name ? r.middle_name[0] + '.' : ''}
             {r.extension_name ? ` ${r.extension_name}` : ''}
           </h1>
-          <p className="text-xs text-text-muted font-mono mt-0.5">{r.uli_number}</p>
         </div>
         {isAdmin && (
           <button onClick={() => setEditOpen(true)} className="btn-primary text-sm">
@@ -561,19 +671,46 @@ export default function Applicants() {
   const user     = useAuthStore(state => state.user);
   const isAdmin  = user?.role === 'admin';
 
+  // ── core state ──────────────────────────────────────────────────────────────
+  const [tab,              setTab]              = useState<'active' | 'archived'>('active');
   const [search,           setSearch]           = useState('');
   const [page,             setPage]             = useState(1);
   const [limit,            setLimit]            = useState(10);
   const [course,           setCourse]           = useState('');
   const [modalOpen,        setModalOpen]        = useState(false);
   const [confirmArchiveId, setConfirmArchiveId] = useState<number | null>(null);
+  const [restoreTarget,    setRestoreTarget]    = useState<{ id: number; name: string } | null>(null);
+
+  // ── advanced filter state ────────────────────────────────────────────────────
+  const [showFilters,       setShowFilters]       = useState(false);
+  const [filterEmpStatus,   setFilterEmpStatus]   = useState('');
+  const [filterScholarship, setFilterScholarship] = useState('');
+  const [filterDateFrom,    setFilterDateFrom]    = useState('');
+  const [filterDateTo,      setFilterDateTo]      = useState('');
 
   const queryClient = useQueryClient();
 
+  const activeFilterCount = [filterEmpStatus, filterScholarship, filterDateFrom, filterDateTo].filter(Boolean).length;
+
+  function clearFilters() {
+    setFilterEmpStatus(''); setFilterScholarship('');
+    setFilterDateFrom(''); setFilterDateTo('');
+    setPage(1);
+  }
+
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['registrations', page, limit, search, course],
+    queryKey: ['registrations', tab, page, limit, search, course, filterEmpStatus, filterScholarship, filterDateFrom, filterDateTo],
     queryFn: () =>
-      api.get('/registrations', { params: { page, limit, search, course } }).then(r => r.data),
+      api.get('/registrations', {
+        params: {
+          page, limit, search, course,
+          status: tab,
+          employment_status: filterEmpStatus  || undefined,
+          scholarship_type:  filterScholarship || undefined,
+          date_from:         filterDateFrom   || undefined,
+          date_to:           filterDateTo     || undefined,
+        },
+      }).then(r => r.data),
     staleTime: 10000,
     enabled: !id,
   });
@@ -585,18 +722,24 @@ export default function Applicants() {
     enabled: !id,
   });
 
-  function handleLimitChange(newLimit: number) {
-    setLimit(newLimit);
-    setPage(1);
-  }
+  function handleLimitChange(newLimit: number) { setLimit(newLimit); setPage(1); }
 
   async function handleArchive(rid: number) {
     try {
       await api.patch(`/registrations/${rid}/archive`);
       toast.success('Registration archived.');
       setConfirmArchiveId(null);
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['registrations'] });
     } catch { toast.error('Failed to archive.'); }
+  }
+
+  async function handleRestore(rid: number) {
+    try {
+      await api.patch(`/registrations/${rid}/restore`);
+      toast.success('Registration restored.');
+      setRestoreTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['registrations'] });
+    } catch { toast.error('Failed to restore.'); }
   }
 
   const registrations = data?.data  || [];
@@ -612,63 +755,216 @@ export default function Applicants() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
+      {/* ── Restore confirm modal ── */}
+      <AnimatePresence>
+        {restoreTarget && (
+          <>
+            <motion.div key="bd" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setRestoreTarget(null)} />
+            <motion.div key="dlg" initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }} transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4">
+              <div className="pointer-events-auto w-full max-w-sm card p-6 shadow-2xl">
+                <h3 className="font-bold text-base text-text-primary mb-1">Restore Registration?</h3>
+                <p className="text-sm text-text-muted mb-5">
+                  <span className="font-medium text-text-primary">{restoreTarget.name}</span> will be moved back to Active.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button className="btn-ghost text-sm" onClick={() => setRestoreTarget(null)}>Cancel</button>
+                  <button className="btn-primary text-sm" onClick={() => handleRestore(restoreTarget.id)}>Restore</button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="section-title">Applicants</h1>
-          <p className="text-sm mt-1 text-text-muted">{total} registered learner{total !== 1 ? 's' : ''}</p>
+          <p className="text-sm mt-1 text-text-muted">{total} {tab} learner{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => refetch()} className="btn-ghost text-sm"><RefreshCw size={14} /></button>
-          <button onClick={() => setModalOpen(true)} className="btn-primary text-sm">
-            <FilePlus size={14} /> New Registration
+          {tab === 'active' && (
+            <button onClick={() => setModalOpen(true)} className="btn-primary text-sm">
+              <FilePlus size={14} /> New Registration
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Active / Archived tabs ── */}
+      <div className="flex gap-2 mb-4">
+        {(['active', 'archived'] as const).map(t => (
+          <button key={t} onClick={() => { setTab(t); setPage(1); setConfirmArchiveId(null); }}
+            className={clsx('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize', tab === t ? 'btn-primary' : 'btn-ghost')}>
+            {t === 'archived' && <Archive size={13} />}
+            {t === 'active' ? 'Active' : 'Archived'}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Search + Filters ── */}
+      <div className="card p-4 mb-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input 
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+              placeholder="Search by name or contact number…"
+              value={search} 
+              onChange={e => { setSearch(e.target.value); setPage(1); }} 
+            />
+          </div>
+
+          {/* Course dropdown - FIXED with custom-select class */}
+          <div className="relative min-w-[180px]">
+            <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />
+            <select 
+              className="w-full h-10 pl-10 pr-8 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none custom-select"
+              value={course}
+              onChange={e => { setCourse(e.target.value); setPage(1); }}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '16px'
+              }}
+            >
+              <option value="">All Courses</option>
+              {coursesData?.map((c: any) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter toggle button - FIXED */}
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            className={clsx(
+              'h-10 px-4 rounded-lg text-sm font-medium flex items-center gap-2 transition-all shrink-0',
+              activeFilterCount > 0 
+                ? 'bg-accent/10 text-accent border border-accent' 
+                : 'border border-border bg-transparent text-text-secondary hover:bg-bg-input hover:text-text-primary'
+            )}
+          >
+            <Filter size={14} />
+            <span>Filters</span>
+            <ChevronDown 
+              size={14} 
+              className={clsx('transition-transform', showFilters && 'rotate-180')} 
+            />
+            {activeFilterCount > 0 && (
+              <span className="ml-1 w-5 h-5 rounded-full bg-accent text-white text-xs flex items-center justify-center font-medium">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
+
+        {/* Row 2: advanced filters (collapsible) */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-3 border-t border-border">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Employment Status - FIXED */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Employment Status</label>
+                    <select 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                      value={filterEmpStatus}
+                      onChange={e => { setFilterEmpStatus(e.target.value); setPage(1); }}
+                    >
+                      <option value="">All</option>
+                      {EMP_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  {/* Scholarship - FIXED */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Scholarship</label>
+                    <select 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                      value={filterScholarship}
+                      onChange={e => { setFilterScholarship(e.target.value); setPage(1); }}
+                    >
+                      <option value="">All</option>
+                      {SCHOLARSHIP_OPTIONS.filter(s => s !== 'Others').map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  {/* Date From - FIXED */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Registered From</label>
+                    <input 
+                      type="date" 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                      value={filterDateFrom}
+                      onChange={e => { setFilterDateFrom(e.target.value); setPage(1); }} 
+                    />
+                  </div>
+                  {/* Date To - FIXED */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Registered To</label>
+                    <input 
+                      type="date" 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                      value={filterDateTo}
+                      onChange={e => { setFilterDateTo(e.target.value); setPage(1); }} 
+                    />
+                  </div>
+                </div>
+                {activeFilterCount > 0 && (
+                  <button onClick={clearFilters} className="btn-ghost text-xs mt-3 text-red-400 hover:text-red-500">
+                    ✕ Clear all filters
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Filters */}
-      <div className="card p-4 mb-5 flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input className="input-base pl-9" placeholder="Search by name, ULI, or contact number…"
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-        </div>
-        <div className="relative">
-          <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <select className="input-base pl-9 min-w-[180px]" value={course}
-            onChange={e => { setCourse(e.target.value); setPage(1); }}>
-            <option value="">All Courses</option>
-            {coursesData?.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
+      {/* ── Table ── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
         <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th><th>ULI Number</th><th>Course</th><th>Sex</th>
+                <th>Name</th>
+                <th>Course</th>
+                <th>Sex</th>
                 {isAdmin && <th>Civil Status</th>}
                 <th>Contact</th>
                 {isAdmin && <th>Encoded By</th>}
-                <th>Date</th><th>Action</th>
+                <th className="min-w-[120px]">Date</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 [...Array(limit)].map((_, i) => (
-                  <tr key={i}>{[...Array(isAdmin ? 9 : 7)].map((_, j) => <td key={j}><div className="skeleton" /></td>)}</tr>
+                  <tr key={i}>{[...Array(isAdmin ? 8 : 6)].map((_, j) => <td key={j}><div className="skeleton" /></td>)}</tr>
                 ))
               ) : registrations.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 7} className="text-center py-16">
-                    <div className="text-4xl mb-3">📋</div>
-                    <div className="text-sm text-text-muted mb-3">No applicants found.</div>
-                    <button onClick={() => setModalOpen(true)} className="btn-primary text-sm mx-auto">
-                      <FilePlus size={14} /> Register First Learner
-                    </button>
+                  <td colSpan={isAdmin ? 8 : 6} className="text-center py-16">
+                    <div className="text-4xl mb-3">{tab === 'archived' ? '🗄️' : '📋'}</div>
+                    <div className="text-sm text-text-muted mb-3">
+                      {tab === 'archived' ? 'No archived applicants.' : 'No applicants found.'}
+                    </div>
+                    {tab === 'active' && (
+                      <button onClick={() => setModalOpen(true)} className="btn-primary text-sm mx-auto">
+                        <FilePlus size={14} /> Register First Learner
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : registrations.map((r: any) => (
@@ -679,23 +975,24 @@ export default function Applicants() {
                     </div>
                     <div className="text-xs text-text-muted">{r.email || '—'}</div>
                   </td>
-                  <td className="font-mono text-xs text-text-secondary">{r.uli_number}</td>
                   <td><div className="text-xs text-text-secondary max-w-[140px] truncate">{r.course_qualification || '—'}</div></td>
                   <td><span className="badge badge-blue">{r.sex || '—'}</span></td>
                   {isAdmin && <td className="text-xs text-text-secondary">{r.civil_status || '—'}</td>}
                   <td className="text-xs text-text-secondary">{r.contact_no || '—'}</td>
                   {isAdmin && <td className="text-xs text-text-muted">{r.encoder_name || '—'}</td>}
-                  <td className="text-xs text-text-muted">
+                  <td className="text-xs text-text-muted whitespace-nowrap min-w-[120px]"> {/* Added classes */}
                     {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
                   <td>
                     <div className="flex items-center gap-1">
+                      {/* View — always available */}
                       <button title="View"
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors"
                         onClick={() => navigate(isAdmin ? `/admin/applicants/${r.id}` : `/encoder/applicants/${r.id}`)}>
                         <Eye size={14} />
                       </button>
-                      {isAdmin && (
+
+                      {isAdmin && tab === 'active' && (
                         confirmArchiveId === r.id ? (
                           <>
                             <button className="px-2 h-7 rounded-lg text-xs font-medium btn-ghost" onClick={() => setConfirmArchiveId(null)}>Cancel</button>
@@ -708,6 +1005,14 @@ export default function Applicants() {
                             <Archive size={14} />
                           </button>
                         )
+                      )}
+
+                      {isAdmin && tab === 'archived' && (
+                        <button title="Restore"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-green-500 transition-colors"
+                          onClick={() => setRestoreTarget({ id: r.id, name: `${r.last_name}, ${r.first_name}` })}>
+                          <RefreshCcw size={14} />
+                        </button>
                       )}
                     </div>
                   </td>

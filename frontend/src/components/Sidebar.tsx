@@ -140,25 +140,6 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           </div>
         </nav>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-white/[0.07]">
-          <div className="flex items-center gap-3 px-2 py-1">
-            <div className={clsx(
-              'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0',
-              user?.role === 'admin' ? 'bg-accent' : 'bg-blue-500'
-            )}>
-              {user?.full_name?.[0] || '?'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-white truncate">
-                {user?.full_name}
-              </div>
-              <div className="text-xs capitalize text-white/40">
-                {user?.role}
-              </div>
-            </div>
-          </div>
-        </div>
       </aside>
     </>
   );

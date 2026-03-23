@@ -1,5 +1,5 @@
 // frontend/src/components/AppHeader.tsx
-import { Bell, ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -46,12 +46,6 @@ export default function AppHeader({ onMenuClick }: { onMenuClick?: () => void })
       {/* Right */}
       <div className="flex items-center gap-2">
         <ThemeToggle />
-
-        {/* Notifications */}
-        <button className="w-9 h-9 rounded-xl flex items-center justify-center relative bg-bg-input border border-border text-text-secondary hover:text-text-primary transition-colors">
-          <Bell size={16} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />
-        </button>
 
         {/* User dropdown */}
         <div className="relative">

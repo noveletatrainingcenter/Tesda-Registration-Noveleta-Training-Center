@@ -236,16 +236,32 @@ export default function Courses() {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Filters - FIXED */}
       <div className="card p-4 mb-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input className="input-base pl-9" placeholder="Search by name..."
-              value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Search input - fixed */}
+          <div className="relative flex-1 max-w-sm w-full">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input 
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+              placeholder="Search by name..."
+              value={search} 
+              onChange={e => { setSearch(e.target.value); setPage(1); }} 
+            />
           </div>
-          <select className="input-base max-w-xs" value={sectorFilter}
-            onChange={e => { setSector(e.target.value); setPage(1); }}>
+          
+          {/* Sector dropdown - fixed */}
+          <select 
+            className="w-full sm:w-64 h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none"
+            value={sectorFilter}
+            onChange={e => { setSector(e.target.value); setPage(1); }}
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 1rem center',
+              backgroundSize: '16px'
+            }}
+          >
             <option value="">All Sectors</option>
             {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>

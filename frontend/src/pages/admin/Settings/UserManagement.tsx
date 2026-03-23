@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Key, Plus, ToggleLeft, ToggleRight, Copy,
   ChevronLeft, ChevronRight, Search, Pencil, X, Save, Lock, ShieldQuestion,
+  Eye, EyeOff,
 } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -81,6 +82,8 @@ function ChangePasswordDialog({
   const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error,           setError]           = useState('');
+  const [showNew,         setShowNew]         = useState(false);
+  const [showConfirm,     setShowConfirm]     = useState(false);
 
   function handleConfirm() {
     setError('');
@@ -115,16 +118,45 @@ function ChangePasswordDialog({
         <div className="space-y-3">
           <div>
             <label className="label">New Password</label>
-            <input className="input-base" type="password" placeholder="Enter new password"
-              value={newPassword} autoFocus
-              onChange={e => { setNewPassword(e.target.value); setError(''); }} />
+            <div className="relative">
+              <input 
+                className="w-full h-10 pl-4 pr-10 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                type={showNew ? 'text' : 'password'}
+                placeholder="Enter new password"
+                value={newPassword} 
+                autoFocus
+                onChange={e => { setNewPassword(e.target.value); setError(''); }} 
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowNew(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+              >
+                {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="label">Confirm Password</label>
-            <input className="input-base" type="password" placeholder="Re-enter new password"
-              value={confirmPassword}
-              onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
-              onKeyDown={e => e.key === 'Enter' && handleConfirm()} />
+            <div className="relative">
+              <input 
+                className="w-full h-10 pl-4 pr-10 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="Re-enter new password"
+                value={confirmPassword}
+                onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleConfirm()} 
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+              >
+                {showConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </div>
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
@@ -156,6 +188,7 @@ function SecurityQuestionDialog({
   const [custom,   setCustom]   = useState('');
   const [answer,   setAnswer]   = useState('');
   const [error,    setError]    = useState('');
+  const [showAnswer, setShowAnswer] = useState(false);
 
   const isOthers   = selected === 'Others';
   const finalQuestion = isOthers ? custom.trim() : selected;
@@ -193,13 +226,18 @@ function SecurityQuestionDialog({
         </p>
 
         <div className="space-y-3">
-          {/* Question dropdown */}
           <div>
             <label className="label">Security Question</label>
             <select
-              className="input-base"
+              className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none"
               value={selected}
               onChange={e => { setSelected(e.target.value); setCustom(''); setError(''); }}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 1rem center',
+                backgroundSize: '16px'
+              }}
             >
               <option value="">— Choose a question —</option>
               {SECURITY_QUESTIONS.map(q => (
@@ -208,7 +246,6 @@ function SecurityQuestionDialog({
             </select>
           </div>
 
-          {/* Custom question input — only shown when "Others" is selected */}
           <AnimatePresence>
             {isOthers && (
               <motion.div
@@ -220,7 +257,7 @@ function SecurityQuestionDialog({
               >
                 <label className="label">Custom Question</label>
                 <input
-                  className="input-base"
+                  className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
                   type="text"
                   placeholder="Type your custom security question"
                   value={custom}
@@ -231,17 +268,26 @@ function SecurityQuestionDialog({
             )}
           </AnimatePresence>
 
-          {/* Answer */}
           <div>
             <label className="label">Answer</label>
-            <input
-              className="input-base"
-              type="password"
-              placeholder="Enter your answer"
-              value={answer}
-              onChange={e => { setAnswer(e.target.value); setError(''); }}
-              onKeyDown={e => e.key === 'Enter' && handleConfirm()}
-            />
+            <div className="relative">
+              <input
+                className="w-full h-10 pl-4 pr-10 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                type={showAnswer ? 'text' : 'password'}
+                placeholder="Enter your answer"
+                value={answer}
+                onChange={e => { setAnswer(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleConfirm()}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowAnswer(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+              >
+                {showAnswer ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-xs text-red-400">{error}</p>}
@@ -263,7 +309,6 @@ function SecurityQuestionDialog({
 type EditForm = {
   full_name: string;
   username:  string;
-  email:     string;
   role:      string;
 };
 
@@ -279,12 +324,11 @@ function EditUserModal({
   const [form, setForm] = useState<EditForm>({
     full_name: user.full_name || '',
     username:  user.username  || '',
-    email:     user.email     || '',
     role:      user.role      || 'encoder',
   });
 
-  const [showPasswordDialog, setShowPasswordDialog]   = useState(false);
-  const [showSecurityDialog, setShowSecurityDialog]   = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showSecurityDialog, setShowSecurityDialog] = useState(false);
 
   const updateFields = useMutation({
     mutationFn: (d: Partial<EditForm>) => api.patch(`/admin/users/${user.id}`, d),
@@ -317,10 +361,9 @@ function EditUserModal({
 
   function handleSave() {
     const payload: Partial<EditForm> = {};
-    if (form.full_name !== user.full_name)      payload.full_name = form.full_name;
-    if (form.username  !== user.username)       payload.username  = form.username;
-    if (form.email     !== (user.email || ''))  payload.email     = form.email;
-    if (form.role      !== user.role)           payload.role      = form.role;
+    if (form.full_name !== user.full_name) payload.full_name = form.full_name;
+    if (form.username  !== user.username)  payload.username  = form.username;
+    if (form.role      !== user.role)      payload.role      = form.role;
 
     if (Object.keys(payload).length === 0) {
       toast('No changes detected.', { icon: 'ℹ️' });
@@ -332,9 +375,13 @@ function EditUserModal({
   const field = (key: keyof EditForm, label: string, type = 'text', placeholder = '') => (
     <div key={key}>
       <label className="label">{label}</label>
-      <input className="input-base" type={type} placeholder={placeholder}
+      <input 
+        className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+        type={type} 
+        placeholder={placeholder}
         value={form[key]}
-        onChange={e => setForm({ ...form, [key]: e.target.value })} />
+        onChange={e => setForm({ ...form, [key]: e.target.value })} 
+      />
     </div>
   );
 
@@ -368,11 +415,19 @@ function EditUserModal({
           <div className="grid grid-cols-2 gap-4">
             {field('full_name', 'Full Name')}
             {field('username',  'Username')}
-            {field('email',     'Email', 'email', 'optional')}
             <div>
               <label className="label">Role</label>
-              <select className="input-base" value={form.role}
-                onChange={e => setForm({ ...form, role: e.target.value })}>
+              <select 
+                className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none"
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value })}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 1rem center',
+                  backgroundSize: '16px'
+                }}
+              >
                 <option value="encoder">Encoder</option>
                 <option value="admin">Admin</option>
               </select>
@@ -453,7 +508,7 @@ function UserList({ qc }: { qc: any }) {
   const [page,     setPage]     = useState(1);
   const [limit,    setLimit]    = useState(10);
   const [form, setForm] = useState({
-    username: '', email: '', password: '', role: 'encoder',
+    username: '', password: '', role: 'encoder',
     full_name: '', security_question: '', security_answer: '',
   });
 
@@ -490,7 +545,7 @@ function UserList({ qc }: { qc: any }) {
       qc.invalidateQueries({ queryKey: ['users'] });
       toast.success(`User created! Employee ID: ${res.data.id}`);
       setShowForm(false);
-      setForm({ username: '', email: '', password: '', role: 'encoder', full_name: '', security_question: '', security_answer: '' });
+      setForm({ username: '', password: '', role: 'encoder', full_name: '', security_question: '', security_answer: '' });
     },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed.'),
   });
@@ -503,23 +558,26 @@ function UserList({ qc }: { qc: any }) {
         )}
       </AnimatePresence>
 
-      {/* Toolbar */}
+      {/* Toolbar - FIXED with count on right side */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        {/* Left side: Search only */}
+        <div className="relative w-64">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+            placeholder="Search by name or username…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+
+        {/* Right side: User count and Add User button */}
         <div className="flex items-center gap-3">
           <span className="text-sm text-text-muted">{total} user{total !== 1 ? 's' : ''}</span>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              className="input-base pl-9 text-sm w-56"
-              placeholder="Search by name or username…"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
+          <button className="btn-primary text-sm h-10 px-4 flex items-center gap-2" onClick={() => setShowForm(!showForm)}>
+            <Plus size={14} /> Add User
+          </button>
         </div>
-        <button className="btn-primary text-sm" onClick={() => setShowForm(!showForm)}>
-          <Plus size={14} /> Add User
-        </button>
       </div>
 
       {/* New user form */}
@@ -528,21 +586,33 @@ function UserList({ qc }: { qc: any }) {
           <h3 className="font-bold text-base text-text-primary mb-4">New User</h3>
           <div className="grid grid-cols-2 gap-4">
             {([
-              ['full_name', 'Full Name',       'text'],
-              ['username',  'Username',         'text'],
-              ['email',     'Email (optional)', 'email'],
-              ['password',  'Password',         'password'],
+              ['full_name', 'Full Name', 'text'],
+              ['username',  'Username',  'text'],
+              ['password',  'Password',  'password'],
             ] as [string, string, string][]).map(([k, l, t]) => (
               <div key={k}>
                 <label className="label">{l}</label>
-                <input className="input-base" type={t} value={(form as any)[k]}
-                  onChange={e => setForm({ ...form, [k]: e.target.value })} />
+                <input 
+                  className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                  type={t} 
+                  value={(form as any)[k]}
+                  onChange={e => setForm({ ...form, [k]: e.target.value })} 
+                />
               </div>
             ))}
             <div>
               <label className="label">Role</label>
-              <select className="input-base" value={form.role}
-                onChange={e => setForm({ ...form, role: e.target.value })}>
+              <select 
+                className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none"
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value })}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 1rem center',
+                  backgroundSize: '16px'
+                }}
+              >
                 <option value="encoder">Encoder</option>
                 <option value="admin">Admin</option>
               </select>
@@ -551,22 +621,38 @@ function UserList({ qc }: { qc: any }) {
               <>
                 <div className="col-span-2">
                   <label className="label">Security Question</label>
-                  <select className="input-base mb-3" value={form.security_question}
-                    onChange={e => setForm({ ...form, security_question: e.target.value })}>
+                  <select 
+                    className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none mb-3"
+                    value={form.security_question}
+                    onChange={e => setForm({ ...form, security_question: e.target.value })}
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 1rem center',
+                      backgroundSize: '16px'
+                    }}
+                  >
                     <option value="">— Choose a question —</option>
                     {SECURITY_QUESTIONS.map(q => (
                       <option key={q} value={q}>{q}</option>
                     ))}
                   </select>
                   {form.security_question === 'Others' && (
-                    <input className="input-base" placeholder="Type your custom question"
-                      onChange={e => setForm({ ...form, security_question: e.target.value === '' ? 'Others' : e.target.value })} />
+                    <input 
+                      className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                      placeholder="Type your custom question"
+                      onChange={e => setForm({ ...form, security_question: e.target.value === '' ? 'Others' : e.target.value })} 
+                    />
                   )}
                 </div>
                 <div className="col-span-2">
                   <label className="label">Security Answer</label>
-                  <input className="input-base" type="password" value={form.security_answer}
-                    onChange={e => setForm({ ...form, security_answer: e.target.value })} />
+                  <input 
+                    className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                    type="password" 
+                    value={form.security_answer}
+                    onChange={e => setForm({ ...form, security_answer: e.target.value })} 
+                  />
                 </div>
               </>
             )}
@@ -704,14 +790,23 @@ function ResetTickets() {
           Send it manually via chat or message.
         </p>
         <label className="label">Select Encoder</label>
-        <select className="input-base mb-4" value={encoderId}
-          onChange={e => { setEncoderId(e.target.value); setTicket(''); }}>
+        <select 
+          className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none mb-4"
+          value={encoderId}
+          onChange={e => { setEncoderId(e.target.value); setTicket(''); }}
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 1rem center',
+            backgroundSize: '16px'
+          }}
+        >
           <option value="">— Choose encoder —</option>
           {encoders.map((u: any) => (
             <option key={u.id} value={u.id}>{u.full_name} ({u.username})</option>
           ))}
         </select>
-        <button className="btn-primary w-full justify-center" onClick={handleGenerate} disabled={loading}>
+        <button className="btn-primary w-full justify-center h-10" onClick={handleGenerate} disabled={loading}>
           {loading ? 'Generating...' : <><Key size={15} /> Generate Ticket</>}
         </button>
 
@@ -720,7 +815,7 @@ function ResetTickets() {
             <div className="p-4 rounded-xl bg-bg-input border border-border text-center">
               <div className="text-xs text-text-muted mb-2">Reset Ticket (valid 24h)</div>
               <div className="font-mono text-2xl font-bold tracking-widest text-text-primary mb-4">{ticket}</div>
-              <button className="btn-primary text-sm"
+              <button className="btn-primary text-sm h-10 px-4"
                 onClick={() => { navigator.clipboard.writeText(ticket); toast.success('Copied!'); }}>
                 <Copy size={14} /> Copy Ticket
               </button>

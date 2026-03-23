@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Search, ChevronDown, ChevronUp, Plus, Printer,
   Check, AlertCircle, User, Building2, BookOpen, Briefcase,
-  CheckCircle2, ChevronRight, ChevronLeft, Save, Eye,
-  Archive, RefreshCw, AlertTriangle, Pencil,
+  CheckCircle2, ChevronRight, ChevronLeft, Save, Eye, Filter,
+  Archive, RefreshCw, AlertTriangle, Pencil, FileSpreadsheet, FileDown,
 } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
+import * as XLSX from 'xlsx-js-style';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -75,6 +76,311 @@ interface ProviderInfo {
 interface ProgramInfo {
   qualification_ntr: string; copr_number: string;
   industry_sector: string; industry_sector_other: string;
+}
+
+// ─── Excel export helper ──────────────────────────────────────────────────────
+function buildExcelRows(
+  applicants: any[],
+  extras: Record<number, TraineeExtra>,
+  sectorCode: string,
+  selectedCourse: any,
+): { rows: (string|null)[][], merges: any[], colors: string[] } {
+  function dob(r: any) {
+    if (!r.birth_month || !r.birth_day || !r.birth_year) return '';
+    return `${String(new Date(`${r.birth_month} 1`).getMonth()+1).padStart(2,'0')}-${String(r.birth_day).padStart(2,'0')}-${String(r.birth_year).slice(-2)}`;
+  }
+  function suggestId(idx: number) { return `NTC-${sectorCode || 'S'}-${String(idx+1).padStart(4,'0')}`; }
+  function fmtDate(v: string) {
+    if (!v) return '';
+    const dateOnly = v.split('T')[0];
+    const parts = dateOnly.split('-');
+    if (parts.length !== 3) return v;
+    const [y, m, d] = parts;
+    return `${m}-${d}-${y.slice(2)}`;
+  }
+
+  const TOTAL_COLS = 42;
+
+  // Row 1: group headers (merged)
+  const groupRow: (string|null)[] = Array(TOTAL_COLS).fill(null);
+  groupRow[0]  = 'TVET Providers Profile';   // cols 0-8  (9 cols)
+  groupRow[9]  = 'Program Profile';           // cols 9-15 (7 cols)
+  groupRow[16] = 'Students Profile';          // cols 16-38 (23 cols)
+  groupRow[39] = 'Employment';                // cols 39-41 (3 cols)
+
+  // Row 2: column headers
+  const headerRow = [
+    'Region','Province','District','Municipality/City','Name of Provider','TBP ID Number','Address',
+    'Type of Institution','Classification of Provider','Full Qualification (WTR)','Qualification (Clustered)',
+    'Qualification (NTR)','CoPR Number','Delivery Mode','Industry Sector of Qualification','Others, Please Specify',
+    'Student ID Number','Family/Last Name','First Name','Middle Name','Contact Number','Email',
+    'Street No. and Street Address','Barangay','Municipality/City','District','Province','Sex',
+    'Date of Birth (mm-dd-yy)','Age','Civil Status','Highest Educational Attainment',
+    'PGS Training Component','Voucher Number','Client Type',
+    'Date Started (mm-dd-yy)','Date Finished (mm-dd-yy)','Reason for not Finishing','Assessment Results',
+    'Employment Date (mm-dd-yy)','Name of Employer','Address of Employer',
+  ];
+
+  // Row 3: column letters
+  const letterRow = [
+    '(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)','(o)','(p)',
+    '(q)','(r)','(s)','(t)','(u)','(v)','(w)','(x)','(y)','(z)','(aa)','(ac)','(ad)','(ae)','(af)','(ag)',
+    '(ai)','(aj)','(ak)','(al)','(am)','(an)','(ao)','(ap)','(aq)','(ar)',
+  ];
+
+  const dataRows: string[][] = applicants.map((r, idx) => {
+    const ex = extras[r.id] ?? emptyExtra(r.id);
+    const sid = ex.student_id_number || suggestId(idx);
+    return [
+      ex.region, ex.province, ex.district, ex.municipality, ex.provider_name, ex.tbp_id, ex.address,
+      ex.institution_type, ex.classification, ex.full_qualification, ex.qualification_clustered,
+      ex.qualification_ntr, ex.copr_number,
+      ex.delivery_mode || selectedCourse?.name || '',
+      ex.industry_sector !== 'Others' ? ex.industry_sector : '',
+      ex.industry_sector === 'Others' ? ex.industry_sector_other : '',
+      sid, r.last_name||'', r.first_name||'', r.middle_name||'', r.contact_no||'', r.email||'',
+      [r.address_street,r.address_subdivision].filter(Boolean).join(', '),
+      r.address_barangay||'', r.address_city||'', '', r.address_province||'', r.sex||'',
+      dob(r), String(r.age||''), r.civil_status||'', r.educational_attainment||'',
+      ex.pgs_training_component||'', ex.voucher_number||'', ex.client_type||'',
+      fmtDate(ex.date_started), fmtDate(ex.date_finished), ex.reason_not_finishing||'', ex.assessment_results||'',
+      fmtDate(ex.employment_date), ex.employer_name||'', ex.employer_address||'',
+    ];
+  });
+
+  // Merge ranges for group header row (row index 0)
+  const merges = [
+    { s: { r: 0, c: 0  }, e: { r: 0, c: 8  } }, // TVET Providers Profile
+    { s: { r: 0, c: 9  }, e: { r: 0, c: 15 } }, // Program Profile
+    { s: { r: 0, c: 16 }, e: { r: 0, c: 38 } }, // Students Profile
+    { s: { r: 0, c: 39 }, e: { r: 0, c: 41 } }, // Employment
+  ];
+
+  // Colors per column for group header row: pink, yellow, green, blue
+  // We'll pass group color assignments separately
+  const groupColors = ['FFB3C6','FFD966','90EE90','C9DAF8'];
+
+  return { rows: [groupRow, headerRow, letterRow, ...dataRows], merges, colors: groupColors };
+}
+
+// REPLACE the entire downloadAsExcel function WITH THIS:
+function downloadAsExcel(
+  applicants: any[],
+  extras: Record<number, TraineeExtra>,
+  sectorCode: string,
+  selectedCourse: any,
+  filename: string,
+) {
+  const { rows, merges } = buildExcelRows(applicants, extras, sectorCode, selectedCourse);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!merges'] = merges;
+
+  const groupDefs = [
+    { start: 0,  end: 8,  color: 'FFB3C6' },
+    { start: 9,  end: 15, color: 'FFD966' },
+    { start: 16, end: 38, color: '90EE90' },
+    { start: 39, end: 41, color: 'C9DAF8' },
+  ];
+
+  groupDefs.forEach(({ start, end, color }) => {
+    for (let c = start; c <= end; c++) {
+      const cellAddr = XLSX.utils.encode_cell({ r: 0, c });
+      if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+      ws[cellAddr].s = {
+        fill: { fgColor: { rgb: color }, patternType: 'solid' },
+        font: { bold: true, sz: 8 },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
+      };
+    }
+  });
+
+  for (let c = 0; c < 42; c++) {
+    const cellAddr = XLSX.utils.encode_cell({ r: 1, c });
+    if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+    ws[cellAddr].s = {
+      fill: { fgColor: { rgb: '555555' }, patternType: 'solid' },
+      font: { bold: true, sz: 7, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
+    };
+  }
+
+  for (let c = 0; c < 42; c++) {
+    const cellAddr = XLSX.utils.encode_cell({ r: 2, c });
+    if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+    ws[cellAddr].s = {
+      fill: { fgColor: { rgb: 'FFE066' }, patternType: 'solid' },
+      font: { bold: true, sz: 7 },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
+    };
+  }
+
+  for (let r = 3; r < rows.length; r++) {
+    for (let c = 0; c < 42; c++) {
+      const cellAddr = XLSX.utils.encode_cell({ r, c });
+      if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+      ws[cellAddr].s = {
+        font: { sz: 7 },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
+      };
+    }
+  }
+
+  ws['!cols'] = Array(42).fill(null).map((_, i) => {
+    // Address columns get more width
+    if (i === 6 || i === 22) return { wch: 25 };
+    // Name, barangay, city columns
+    if (i === 4 || i === 17 || i === 18 || i === 23 || i === 24) return { wch: 20 };
+    // Default
+    return { wch: 15 };
+  });
+  ws['!rows'] = [{ hpt: 30 }, { hpt: 40 }, { hpt: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+}
+
+// ─── Print helpers ────────────────────────────────────────────────────────────
+const PRINT_STYLES = `*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:7px;color:#000;background:#fff;}.page{padding:6mm;}table{border-collapse:collapse;}th,td{border:1px solid #000;padding:2px 3px;vertical-align:middle;font-size:6.5px;word-wrap:break-word;overflow-wrap:break-word;background:#fff;color:#000;}th{text-align:center;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{size:landscape;margin:5mm;}}`;
+
+function openPrintWindow(content: string, title: string, autoPrint: boolean) {
+  const win = window.open('', '_blank', 'width=1500,height=900');
+  if (!win) { toast.error('Pop-up blocked. Allow pop-ups and try again.'); return; }
+  
+  win.document.open();
+  win.document.write(`<!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          ${PRINT_STYLES}
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            @page {
+              size: landscape;
+              margin: 5mm;
+            }
+            /* Force page breaks for wide tables */
+            .print-wrapper {
+              display: block;
+              width: 100%;
+            }
+            table {
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
+            tfoot {
+              display: table-footer-group;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="print-wrapper" style="width: 3300px; max-width: none;">
+            ${content}
+          </div>
+        </div>
+      </body>
+    </html>`);
+  win.document.close();
+  
+  if (autoPrint) {
+    win.onload = () => { 
+      win.focus(); 
+      // Small delay to ensure CSS is applied
+      setTimeout(() => {
+        win.print(); 
+        win.close(); 
+      }, 500);
+    };
+  }
+}
+
+// ─── Action Buttons component ─────────────────────────────────────────────────
+function ReportActions({
+  printRef,
+  title,
+  applicants,
+  extras,
+  sectorCode,
+  selectedCourse,
+}: {
+  printRef: React.RefObject<HTMLDivElement>;
+  title: string;
+  applicants: any[];
+  extras: Record<number, TraineeExtra>;
+  sectorCode: string;
+  selectedCourse: any;
+}) {
+  const [excelLoading, setExcelLoading] = useState(false);
+
+function handlePrint() {
+  // Add a small toast to remind user
+  toast.success('Printing... Make sure scale is set to 100% in print dialog', {
+    duration: 3000
+  });
+  
+  // Just call window.print() - the CSS will handle hiding everything else
+  window.print();
+}
+
+  function handleSavePDF() {
+    window.print();
+  }
+
+  async function handleSaveExcel() {
+    setExcelLoading(true);
+    try {
+      const filename = (title || 'TESDA_Report').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
+      downloadAsExcel(applicants, extras, sectorCode, selectedCourse, filename);
+      toast.success('Excel file downloaded!');
+    } catch {
+      toast.error('Failed to generate Excel. Try again.');
+    } finally {
+      setExcelLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={handlePrint}
+        className="btn-ghost text-sm flex items-center gap-2"
+        title="Send to printer"
+      >
+        <Printer size={13}/> Print
+      </button>
+      {/* <button
+        onClick={handleSavePDF}
+        className="btn-ghost text-sm flex items-center gap-2"
+        title="Open print dialog → Save as PDF"
+      >
+        <FileDown size={13}/> Save PDF
+      </button> */}
+      <button
+        onClick={handleSaveExcel}
+        disabled={excelLoading}
+        className="btn-primary text-sm flex items-center gap-2"
+        title="Download as Excel (.xlsx)"
+      >
+        <FileSpreadsheet size={13}/> {excelLoading ? 'Generating…' : 'Save Excel'}
+      </button>
+    </div>
+  );
 }
 
 // ─── ConfirmModal ─────────────────────────────────────────────────────────────
@@ -153,34 +459,35 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
   }
   function suggestId(idx: number) { return `NTC-${sectorCode || 'S'}-${String(idx+1).padStart(4,'0')}`; }
 
-  const cellStyle: React.CSSProperties = { border:'1px solid #000', padding:'3px', fontSize:7, verticalAlign:'middle', height:'28px', background:'#fff', color:'#000' };
-  const colHeaderStyle: React.CSSProperties = { background:'#555', color:'#fff', fontSize:5.5, padding:'2px 1px', border:'1px solid #000', whiteSpace:'normal' as const, lineHeight:1.2 };
-  const colLetterStyle: React.CSSProperties = { background:'#ffe066', color:'#000', fontSize:6, padding:'2px 1px', border:'1px solid #000' };
+  const cellStyle: React.CSSProperties = { border:'1px solid #000', padding:'2px 3px', fontSize:9, verticalAlign:'middle', textAlign:'center', background:'#fff', color:'#000', whiteSpace:'nowrap' };
+  const dateCellStyle: React.CSSProperties = { ...cellStyle, fontWeight: 'bold' };
+  const colHeaderStyle: React.CSSProperties = { background:'#555', color:'#fff', fontSize:7, padding:'2px 1px', border:'1px solid #000', whiteSpace:'normal' as const, lineHeight:1.2 };
+  const colLetterStyle: React.CSSProperties = { background:'#ffe066', color:'#000', fontSize:8, padding:'2px 1px', border:'1px solid #000' };
 
   return (
-    <div style={{ fontFamily:'Arial, sans-serif', fontSize:'7px', padding:'6mm', background:'#fff', color:'#000', minWidth:'3300px', width:'max-content' }}>
+    <div style={{ fontFamily:'Arial, sans-serif', fontSize:'9px', padding:'6mm', background:'#fff', color:'#000', minWidth:'3300px', width:'max-content' }}>
       <div style={{ marginBottom:4 }}>
-        <div style={{ fontSize:12, fontWeight:'bold', textDecoration:'underline', color:'#000' }}>{provider.title || 'ENROLLMENT/TERMINAL REPORT'}</div>
-        <div style={{ fontSize:9, fontWeight:'bold', marginTop:1, color:'#000' }}>Noveleta Training Center</div>
-        {(provider.program_title || selectedCourse?.name) && <div style={{ fontSize:9, marginTop:1, color:'#000' }}>{provider.program_title || selectedCourse?.name}</div>}
+        <div style={{ fontSize:14, fontWeight:'bold', textDecoration:'underline', color:'#000' }}>{provider.title || 'ENROLLMENT/TERMINAL REPORT'}</div>
+        <div style={{ fontSize:11, fontWeight:'bold', marginTop:1, color:'#000' }}>Noveleta Training Center</div>
+        {(provider.program_title || selectedCourse?.name) && <div style={{ fontSize:11, marginTop:1, color:'#000' }}>{provider.program_title || selectedCourse?.name}</div>}
       </div>
-      <table style={{ width:'3200px', tableLayout:'fixed', borderCollapse:'collapse', background:'#fff' }}>
+      <table style={{ width:'5000px', tableLayout:'fixed', borderCollapse:'collapse', background:'#fff' }}>
         <colgroup>
           <col style={{width:'55px'}}/><col style={{width:'55px'}}/><col style={{width:'50px'}}/><col style={{width:'65px'}}/>
-          <col style={{width:'90px'}}/><col style={{width:'60px'}}/><col style={{width:'90px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/>
+          <col style={{width:'90px'}}/><col style={{width:'60px'}}/><col style={{width:'120px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/>
           <col style={{width:'70px'}}/><col style={{width:'60px'}}/><col style={{width:'80px'}}/><col style={{width:'70px'}}/><col style={{width:'55px'}}/><col style={{width:'70px'}}/><col style={{width:'70px'}}/>
           <col style={{width:'70px'}}/><col style={{width:'70px'}}/><col style={{width:'70px'}}/><col style={{width:'60px'}}/><col style={{width:'65px'}}/><col style={{width:'75px'}}/>
           <col style={{width:'80px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/><col style={{width:'50px'}}/><col style={{width:'65px'}}/><col style={{width:'40px'}}/>
-          <col style={{width:'60px'}}/><col style={{width:'35px'}}/><col style={{width:'55px'}}/><col style={{width:'65px'}}/>
+          <col style={{width:'60px'}}/><col style={{width:'35px'}}/><col style={{width:'55px'}}/><col style={{width:'90px'}}/>
           <col style={{width:'65px'}}/><col style={{width:'60px'}}/><col style={{width:'55px'}}/><col style={{width:'60px'}}/><col style={{width:'60px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/>
           <col style={{width:'60px'}}/><col style={{width:'70px'}}/><col style={{width:'70px'}}/>
         </colgroup>
         <thead>
           <tr>
-            <td colSpan={9} style={{background:'#f4a7b9',textAlign:'center',fontWeight:'bold',fontSize:7,padding:'3px',border:'1px solid #000',color:'#000'}}>TVET Providers Profile</td>
-            <td colSpan={7} style={{background:'#ffd966',textAlign:'center',fontWeight:'bold',fontSize:7,padding:'3px',border:'1px solid #000',color:'#000'}}>Program Profile</td>
-            <td colSpan={23} style={{background:'#90ee90',textAlign:'center',fontWeight:'bold',fontSize:7,padding:'3px',border:'1px solid #000',color:'#000'}}>Students Profile</td>
-            <td colSpan={3} style={{background:'#c9daf8',textAlign:'center',fontWeight:'bold',fontSize:7,padding:'3px',border:'1px solid #000',color:'#000'}}>Employment</td>
+            <td colSpan={9} style={{background:'#f4a7b9',textAlign:'center',fontWeight:'bold',fontSize:9,padding:'3px',border:'1px solid #000',color:'#000'}}>TVET Providers Profile</td>
+            <td colSpan={7} style={{background:'#ffd966',textAlign:'center',fontWeight:'bold',fontSize:9,padding:'3px',border:'1px solid #000',color:'#000'}}>Program Profile</td>
+            <td colSpan={23} style={{background:'#90ee90',textAlign:'center',fontWeight:'bold',fontSize:9,padding:'3px',border:'1px solid #000',color:'#000'}}>Students Profile</td>
+            <td colSpan={3} style={{background:'#c9daf8',textAlign:'center',fontWeight:'bold',fontSize:9,padding:'3px',border:'1px solid #000',color:'#000'}}>Employment</td>
           </tr>
           <tr>
             {['Region','Province','District','Municipality/City','Name of Provider','TBP ID Number','Address','Type of Institution','Classification of Provider',
@@ -202,6 +509,14 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
           {applicants.map((r: any, idx) => {
             const ex = extras[r.id] ?? emptyExtra(r.id);
             const sid = ex.student_id_number || suggestId(idx);
+            function fmtDate(v: string) {
+              if (!v) return '';
+              const dateOnly = v.split('T')[0];
+              const parts = dateOnly.split('-');
+              if (parts.length !== 3) return v;
+              const [y, m, d] = parts;
+              return `${m}-${d}-${y.slice(2)}`;
+            }
             const cells = [
               ex.region, ex.province, ex.district, ex.municipality, ex.provider_name, ex.tbp_id, ex.address, ex.institution_type, ex.classification,
               ex.full_qualification, ex.qualification_clustered, ex.qualification_ntr, ex.copr_number,
@@ -213,10 +528,10 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
               r.address_barangay||'', r.address_city||'', '', r.address_province||'', r.sex||'',
               dob(r), r.age||'', r.civil_status||'', r.educational_attainment||'',
               ex.pgs_training_component||'', ex.voucher_number||'', ex.client_type||'',
-              ex.date_started||'', ex.date_finished||'', ex.reason_not_finishing||'', ex.assessment_results||'',
-              ex.employment_date||'', ex.employer_name||'', ex.employer_address||'',
+              fmtDate(ex.date_started), fmtDate(ex.date_finished), ex.reason_not_finishing||'', ex.assessment_results||'',
+              fmtDate(ex.employment_date), ex.employer_name||'', ex.employer_address||'',
             ];
-            return <tr key={r.id}>{cells.map((v,i) => <td key={i} style={cellStyle}>{v}</td>)}</tr>;
+            return <tr key={r.id}>{cells.map((v,i) => <td key={i} style={i === 35 || i === 36 ? dateCellStyle : cellStyle}>{v}</td>)}</tr>;
           })}
           {[...Array(Math.max(0,3-applicants.length))].map((_,i) => (
             <tr key={`blank-${i}`}>{[...Array(42)].map((_,j) => <td key={j} style={cellStyle}>&nbsp;</td>)}</tr>
@@ -225,21 +540,21 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
       </table>
       <div style={{ marginTop:14, display:'flex', gap:24, width:'600px' }}>
         <div style={{ flex:1, textAlign:'center' }}>
-          <div style={{ fontSize:'6.5px', color:'#555', marginBottom:8 }}>Prepared by:</div>
-          <div style={{ fontSize:'8px', fontWeight:'bold', color:'#000', marginBottom:2 }}>{provider.prepared_by_left||''}</div>
-          <div style={{ fontSize:'6.5px', color:'#555' }}>Trainer</div>
+          <div style={{ fontSize:'8px', color:'#555', marginBottom:8 }}>Prepared by:</div>
+          <div style={{ fontSize:'10px', fontWeight:'bold', color:'#000', marginBottom:2 }}>{provider.prepared_by_left||''}</div>
+          <div style={{ fontSize:'8px', color:'#555' }}>Trainer</div>
         </div>
         {provider.prepared_by_right && (
           <div style={{ flex:1, textAlign:'center' }}>
-            <div style={{ fontSize:'6.5px', color:'#555', marginBottom:8 }}>Prepared by:</div>
-            <div style={{ fontSize:'8px', fontWeight:'bold', color:'#000', marginBottom:2 }}>{provider.prepared_by_right}</div>
-            <div style={{ fontSize:'6.5px', color:'#555' }}>Trainer</div>
+            <div style={{ fontSize:'8px', color:'#555', marginBottom:8 }}>Prepared by:</div>
+            <div style={{ fontSize:'10px', fontWeight:'bold', color:'#000', marginBottom:2 }}>{provider.prepared_by_right}</div>
+            <div style={{ fontSize:'8px', color:'#555' }}>Trainer</div>
           </div>
         )}
         <div style={{ flex:1, textAlign:'center' }}>
-          <div style={{ fontSize:'6.5px', marginBottom:8, visibility:'hidden' }}>x</div>
-          <div style={{ fontSize:'8px', fontWeight:'bold', color:'#000', marginBottom:2 }}>{provider.nclc_admin||''}</div>
-          <div style={{ fontSize:'6.5px', color:'#555' }}>NCLC Administrator</div>
+          <div style={{ fontSize:'8px', marginBottom:8, visibility:'hidden' }}>x</div>
+          <div style={{ fontSize:'10px', fontWeight:'bold', color:'#000', marginBottom:2 }}>{provider.nclc_admin||''}</div>
+          <div style={{ fontSize:'8px', color:'#555' }}>NCLC Administrator</div>
         </div>
       </div>
     </div>
@@ -250,7 +565,7 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
 function ReportView({ reportId, onBack, onEdit }: {
   reportId: number; onBack: () => void; onEdit: () => void;
 }) {
-  const printRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null!);
   const { data: report, isLoading } = useQuery({
     queryKey: ['report', reportId],
     queryFn: () => api.get(`/reports/${reportId}`).then(r => r.data.data),
@@ -305,32 +620,48 @@ function ReportView({ reportId, onBack, onEdit }: {
     };
   }
 
-  function handlePrint() {
-    const content = printRef.current?.innerHTML;
-    if (!content) return;
-    const win = window.open('','_blank','width=1500,height=900');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>${provider.title||'Report'}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:7px;color:#000;background:#fff;}.page{padding:6mm;}table{border-collapse:collapse;}th,td{border:1px solid #000;padding:2px 3px;vertical-align:middle;font-size:6.5px;word-wrap:break-word;overflow-wrap:break-word;background:#fff;color:#000;}th{text-align:center;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{size:landscape;margin:5mm;}}</style></head><body><div class="page">${content}</div></body></html>`);
-    win.document.close(); win.focus(); setTimeout(()=>{win.print();win.close();},500);
-  }
-
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="btn-ghost text-sm"><ChevronLeft size={14}/> All Reports</button>
-        <div className="flex-1">
-          <h1 className="section-title">{provider.title || 'Report'}</h1>
-          {provider.program_title && <p className="text-sm text-text-muted mt-1">{provider.program_title}</p>}
+      <div className="mb-6">
+        {/* Single flex container for both left and right elements */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Left side: Back button and title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={onBack} className="btn-ghost text-sm shrink-0">
+              <ChevronLeft size={14}/> All Reports
+            </button>
+          </div>
+
+          {/* Right side: Trainee count, Edit button, and ReportActions */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <span className="text-xs text-text-muted mr-1">
+              {trainees.length} trainee{trainees.length !== 1 ? 's' : ''}
+            </span>
+            <button onClick={onEdit} className="btn-ghost text-sm flex items-center gap-2">
+              <Pencil size={13}/> Edit
+            </button>
+            <ReportActions
+              printRef={printRef}
+              title={provider.title}
+              applicants={applicants}
+              extras={extras}
+              sectorCode={sectorCode}
+              selectedCourse={null}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">{trainees.length} trainee{trainees.length !== 1 ? 's' : ''}</span>
-          <button onClick={onEdit} className="btn-ghost text-sm flex items-center gap-2"><Pencil size={13}/> Edit</button>
-          <button onClick={handlePrint} className="btn-primary text-sm flex items-center gap-2"><Printer size={14}/> Print / Save PDF</button>
+        <div className="min-w-0 mt-4">
+          <h1 className="section-title truncate">{provider.title || 'Report'}</h1>
+          {provider.program_title && (
+            <p className="text-sm text-text-muted mt-0.5 truncate">{provider.program_title}</p>
+          )}
         </div>
       </div>
+      
+      {/* Rest of the component remains the same */}
       <div className="card overflow-hidden">
         <div style={{ overflowX:'auto', overflowY:'auto', maxHeight:'70vh' }}>
-          <div ref={printRef}>
+          <div ref={printRef} id="print-area">
             <ReportTable provider={provider} applicants={applicants} extras={extras} sectorCode={sectorCode} selectedCourse={null} />
           </div>
         </div>
@@ -469,7 +800,7 @@ function StepSelectApplicants({ selectedIds, setSelectedIds }: {
                 </td>
                 <td>
                   <div className="font-medium text-sm text-text-primary">{r.last_name}, {r.first_name}{r.middle_name ? ` ${r.middle_name[0]}.` : ''}</div>
-                  <div className="text-xs text-text-muted">{r.email||'—'}</div>
+                  <div className="text-xs text-text-muted">{r.contact_no||'—'}</div>
                 </td>
                 <td className="text-xs text-text-secondary">{r.contact_no||'—'}</td>
                 <td><span className="badge badge-blue text-xs">{r.sex||'—'}</span></td>
@@ -602,13 +933,29 @@ function StepTrainingDetails({ applicants, extras, setExtras, sectorCode }: {
                         <Field label="Client Type" required><Sel value={ex.client_type} onChange={v => setEx(r.id,'client_type',v)} options={CLIENT_TYPES}/></Field>
                         <Field label="Date Started" required>
                           <input type="date" className="input-base text-sm"
-                            value={ex.date_started ? `20${ex.date_started.slice(6,8)}-${ex.date_started.slice(0,2)}-${ex.date_started.slice(3,5)}` : ''}
-                            onChange={e => { const d=e.target.value; if(!d){setEx(r.id,'date_started','');return;} const[y,m,day]=d.split('-'); setEx(r.id,'date_started',`${m}-${day}-${y.slice(2)}`); }}/>
+                            value={(() => {
+                              const v = ex.date_started;
+                              if (!v) return '';
+                              if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+                              if (v.includes('T')) return v.split('T')[0];
+                              const [m, d, y] = v.split('-');
+                              if (m && d && y) return `20${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+                              return '';
+                            })()}
+                            onChange={e => { const d = e.target.value; setEx(r.id, 'date_started', d); }}/>
                         </Field>
                         <Field label="Date Finished" required>
                           <input type="date" className="input-base text-sm"
-                            value={ex.date_finished ? `20${ex.date_finished.slice(6,8)}-${ex.date_finished.slice(0,2)}-${ex.date_finished.slice(3,5)}` : ''}
-                            onChange={e => { const d=e.target.value; if(!d){setEx(r.id,'date_finished','');return;} const[y,m,day]=d.split('-'); setEx(r.id,'date_finished',`${m}-${day}-${y.slice(2)}`); }}/>
+                            value={(() => {
+                              const v = ex.date_finished;
+                              if (!v) return '';
+                              if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+                              if (v.includes('T')) return v.split('T')[0];
+                              const [m, d, y] = v.split('-');
+                              if (m && d && y) return `20${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+                              return '';
+                            })()}
+                            onChange={e => { const d = e.target.value; setEx(r.id, 'date_finished', d); }}/>
                         </Field>
                         <Field label="Reason for Not Finishing"><Inp value={ex.reason_not_finishing} onChange={v => setEx(r.id,'reason_not_finishing',v)} placeholder="(optional)"/></Field>
                         <Field label="Assessment Results"><Inp value={ex.assessment_results} onChange={v => setEx(r.id,'assessment_results',v)} placeholder="(optional)"/></Field>
@@ -657,17 +1004,16 @@ function StepSignatories({ provider, setProvider }: { provider: ProviderInfo; se
   );
 }
 
-// ─── EDIT WIZARD — starts at step 2, all steps pre-filled ────────────────────
+// ─── EDIT WIZARD ──────────────────────────────────────────────────────────────
 function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void }) {
   const queryClient = useQueryClient();
-  // For editing we start at step 2 (Training Details). Steps 0 and 1 are accessible
-  // via the step indicator but NOT required to redo — sector/course/applicants are pre-loaded.
   const [step, setStep] = useState(2);
-  const [maxStep, setMaxStep] = useState(4); // all steps unlocked immediately
+  const [maxStep, setMaxStep] = useState(4);
   function goToStep(n: number) { setStep(n); setMaxStep(prev => Math.max(prev, n)); }
 
   const [saving, setSaving] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
@@ -776,16 +1122,7 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
     } finally { setSaving(false); }
   }
 
-  const printRef = useRef<HTMLDivElement>(null);
-  function handlePrint() {
-    const content = printRef.current?.innerHTML;
-    if (!content) return;
-    const win = window.open('','_blank','width=1500,height=900');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>${provider.title||'Report'}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:7px;color:#000;background:#fff;}.page{padding:6mm;}table{border-collapse:collapse;}th,td{border:1px solid #000;padding:2px 3px;vertical-align:middle;font-size:6.5px;word-wrap:break-word;overflow-wrap:break-word;background:#fff;color:#000;}th{text-align:center;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{size:landscape;margin:5mm;}}</style></head><body><div class="page">${content}</div></body></html>`);
-    win.document.close(); win.focus(); setTimeout(()=>{win.print();win.close();},500);
-  }
-
+  const printRef = useRef<HTMLDivElement>(null!);
   const slide = { enter:{ opacity:0, x:20 }, center:{ opacity:1, x:0 }, exit:{ opacity:0, x:-20 } };
 
   if (!loaded) return (
@@ -797,18 +1134,51 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
 
   return (
     <div className="max-w-6xl mx-auto">
-      <ConfirmModal open={showSaveConfirm} onClose={() => setShowSaveConfirm(false)}
+      {/* Save confirmation modal */}
+      <ConfirmModal 
+        open={showSaveConfirm} 
+        onClose={() => setShowSaveConfirm(false)}
         onConfirm={() => { setShowSaveConfirm(false); handleSave(); }}
-        title="Save Changes?" description={`Update this report with ${selectedIds.length} trainee${selectedIds.length!==1?'s':''}?`}
-        confirmLabel="Save & Preview"/>
+        title="Save Changes?" 
+        description={`Update this report with ${selectedIds.length} trainee${selectedIds.length!==1?'s':''}?`}
+        confirmLabel="Save & Preview"
+      />
+      
+      {/* Leave without saving confirmation modal */}
+      <ConfirmModal 
+        open={showLeaveConfirm} 
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={() => { 
+          setShowLeaveConfirm(false); 
+          onDone(); 
+        }}
+        title="Discard Changes?" 
+        description="You have unsaved changes. Are you sure you want to leave without saving?" 
+        confirmLabel="Leave Without Saving"
+      />
+      
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onDone} className="btn-ghost text-sm"><ChevronLeft size={14}/> All Reports</button>
+        <button 
+          onClick={() => {
+            // Check if we're on a step where changes could have been made
+            // You can make this more sophisticated by tracking actual changes
+            if (step > 0 || selectedIds.length > 0) {
+              setShowLeaveConfirm(true);
+            } else {
+              onDone();
+            }
+          }} 
+          className="btn-ghost text-sm"
+        >
+          <ChevronLeft size={14}/> All Reports
+        </button>
         <div className="flex-1">
           <h1 className="section-title">Edit Report</h1>
           <p className="text-sm text-text-muted mt-1">{provider.title}</p>
         </div>
         <span className="text-xs text-text-muted">ID: {reportId}</span>
       </div>
+      
       <div className="card p-4 mb-5">
         <div className="flex items-center gap-2 overflow-x-auto">
           {STEPS.map((s, i) => (
@@ -824,6 +1194,7 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
           ))}
         </div>
       </div>
+      
       <div className="card p-6 mb-5 min-h-[400px]">
         <AnimatePresence mode="wait">
           {step === 0 && <motion.div key="s0" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
@@ -846,11 +1217,18 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
                 <div className="form-section-title"><FileText size={15}/> Review & Print</div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-green-500 flex items-center gap-1"><CheckCircle2 size={12}/> Saved (ID: {reportId})</span>
-                  <button onClick={handlePrint} className="btn-primary text-sm flex items-center gap-2"><Printer size={14}/> Print / Save PDF</button>
+                  <ReportActions
+                    printRef={printRef}
+                    title={provider.title}
+                    applicants={selectedApplicants}
+                    extras={extras}
+                    sectorCode={sectorCode}
+                    selectedCourse={selectedCourse}
+                  />
                 </div>
               </div>
               <div style={{ overflowX:'auto', overflowY:'auto', borderRadius:'12px', border:'1px solid var(--border)', maxHeight:'600px' }}>
-                <div ref={printRef}>
+                <div ref={printRef} id="print-area">
                   <ReportTable provider={provider} applicants={selectedApplicants} extras={extras} sectorCode={sectorCode} selectedCourse={selectedCourse}/>
                 </div>
               </div>
@@ -858,6 +1236,7 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
           </motion.div>}
         </AnimatePresence>
       </div>
+      
       <div className="flex items-center justify-between">
         <button className="btn-ghost text-sm" disabled={step === 0} onClick={() => goToStep(step-1)}><ChevronLeft size={14}/> Previous</button>
         <div className="flex items-center gap-2">
@@ -875,7 +1254,7 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
   );
 }
 
-// ─── NEW WIZARD — starts at step 0 ───────────────────────────────────────────
+// ─── NEW WIZARD ───────────────────────────────────────────────────────────────
 function NewWizard({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
@@ -950,16 +1329,7 @@ function NewWizard({ onDone }: { onDone: () => void }) {
     } finally { setSaving(false); }
   }
 
-  const printRef = useRef<HTMLDivElement>(null);
-  function handlePrint() {
-    const content = printRef.current?.innerHTML;
-    if (!content) return;
-    const win = window.open('','_blank','width=1500,height=900');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>${provider.title||'Report'}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:7px;color:#000;background:#fff;}.page{padding:6mm;}table{border-collapse:collapse;}th,td{border:1px solid #000;padding:2px 3px;vertical-align:middle;font-size:6.5px;word-wrap:break-word;overflow-wrap:break-word;background:#fff;color:#000;}th{text-align:center;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{size:landscape;margin:5mm;}}</style></head><body><div class="page">${content}</div></body></html>`);
-    win.document.close(); win.focus(); setTimeout(()=>{win.print();win.close();},500);
-  }
-
+  const printRef = useRef<HTMLDivElement>(null!);
   const slide = { enter:{ opacity:0, x:20 }, center:{ opacity:1, x:0 }, exit:{ opacity:0, x:-20 } };
 
   return (
@@ -1013,11 +1383,18 @@ function NewWizard({ onDone }: { onDone: () => void }) {
                 <div className="form-section-title"><FileText size={15}/> Review & Print</div>
                 <div className="flex items-center gap-3">
                   {savedReportId && <span className="text-xs text-green-500 flex items-center gap-1"><CheckCircle2 size={12}/> Saved to DB (ID: {savedReportId})</span>}
-                  <button onClick={handlePrint} className="btn-primary text-sm flex items-center gap-2"><Printer size={14}/> Print / Save PDF</button>
+                  <ReportActions
+                    printRef={printRef}
+                    title={provider.title}
+                    applicants={selectedApplicants}
+                    extras={extras}
+                    sectorCode={sectorCode}
+                    selectedCourse={selectedCourse}
+                  />
                 </div>
               </div>
               <div style={{ overflowX:'auto', overflowY:'auto', borderRadius:'12px', border:'1px solid var(--border)', maxHeight:'600px' }}>
-                <div ref={printRef}>
+                <div ref={printRef} id="print-area">
                   <ReportTable provider={provider} applicants={selectedApplicants} extras={extras} sectorCode={sectorCode} selectedCourse={selectedCourse}/>
                 </div>
               </div>
@@ -1043,31 +1420,64 @@ function NewWizard({ onDone }: { onDone: () => void }) {
 }
 
 // ─── Reports List ─────────────────────────────────────────────────────────────
-function ReportsList({ onNew, onView, onEdit }: { onNew: () => void; onView: (id: number) => void; onEdit: (id: number) => void }) {
+type CompletionFilter = 'all' | 'finished' | 'in-progress';
+
+// frontend/src/pages/shared/Reports.tsx
+
+// First, find the ReportsList component (around line 970) and replace its search/filter section:
+
+function ReportsList({ onNew, onView, onEdit }: {
+  onNew: () => void; onView: (id: number) => void; onEdit: (id: number) => void;
+}) {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [tab, setTab] = useState<'active'|'archived'>('active');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [minTrainees, setMinTrainees] = useState('');
-  const [maxTrainees, setMaxTrainees] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [archiveTarget, setArchiveTarget] = useState<{ id: number; title: string }|null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<{ id: number; title: string }|null>(null);
+  const [search, setSearch]                   = useState('');
+  const [page, setPage]                       = useState(1);
+  const [limit, setLimit]                     = useState(10);
+  const [tab, setTab]                         = useState<'active'|'archived'>('active');
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
+  const [dateFrom, setDateFrom]               = useState('');
+  const [dateTo, setDateTo]                   = useState('');
+  const [minTrainees, setMinTrainees]         = useState('');
+  const [maxTrainees, setMaxTrainees]         = useState('');
+  const [showFilters, setShowFilters]         = useState(false);
+  const [archiveTarget, setArchiveTarget]     = useState<{ id: number; title: string }|null>(null);
+  const [restoreTarget, setRestoreTarget]     = useState<{ id: number; title: string }|null>(null);
 
   const hasActiveFilters = !!(dateFrom||dateTo||minTrainees||maxTrainees);
   function clearFilters() { setDateFrom(''); setDateTo(''); setMinTrainees(''); setMaxTrainees(''); setPage(1); }
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['reports', page, limit, search, tab, dateFrom, dateTo, minTrainees, maxTrainees],
-    queryFn: () => api.get('/reports', { params:{ page, limit, search, archived: tab==='archived'?true:undefined, date_from:dateFrom||undefined, date_to:dateTo||undefined, min_trainees:minTrainees||undefined, max_trainees:maxTrainees||undefined } }).then(r => r.data),
+    queryFn: () => api.get('/reports', {
+      params:{
+        page, limit, search,
+        archived: tab === 'archived' ? true : undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        min_trainees: minTrainees || undefined,
+        max_trainees: maxTrainees || undefined,
+      },
+    }).then(r => r.data),
     staleTime: 10000,
   });
-  const reports: any[] = data?.data || [];
+
+  const allReports: any[] = data?.data || [];
   const pages = data?.pages || 1;
   const total = data?.total || 0;
+
+  const reports = useMemo(() => {
+    if (completionFilter === 'all') return allReports;
+    return allReports.filter(r => {
+      const done  = r.finished_count ?? 0;
+      const total = r.trainee_count  ?? 0;
+      if (completionFilter === 'finished')    return total > 0 && done === total;
+      if (completionFilter === 'in-progress') return done < total;
+      return true;
+    });
+  }, [allReports, completionFilter]);
+
+  const finishedCount   = allReports.filter(r => (r.trainee_count ?? 0) > 0 && r.finished_count === r.trainee_count).length;
+  const inProgressCount = allReports.filter(r => (r.finished_count ?? 0) < (r.trainee_count ?? 0)).length;
 
   async function archive(id: number) {
     try { await api.patch(`/reports/${id}/archive`); toast.success('Archived.'); await queryClient.invalidateQueries({ queryKey:['reports'] }); }
@@ -1077,6 +1487,12 @@ function ReportsList({ onNew, onView, onEdit }: { onNew: () => void; onView: (id
     try { await api.patch(`/reports/${id}/restore`); toast.success('Restored.'); await queryClient.invalidateQueries({ queryKey:['reports'] }); }
     catch { toast.error('Failed to restore.'); }
   }
+
+  const completionTabs: { key: CompletionFilter; label: string; count: number }[] = [
+    { key: 'all',         label: 'All',         count: allReports.length },
+    { key: 'finished',    label: 'Finished',    count: finishedCount     },
+    { key: 'in-progress', label: 'In Progress', count: inProgressCount   },
+  ];
 
   return (
     <div>
@@ -1100,7 +1516,7 @@ function ReportsList({ onNew, onView, onEdit }: { onNew: () => void; onView: (id
 
       <div className="flex gap-2 mb-4">
         {(['active','archived'] as const).map(t => (
-          <button key={t} onClick={() => { setTab(t); setPage(1); }}
+          <button key={t} onClick={() => { setTab(t); setPage(1); setCompletionFilter('all'); }}
             className={clsx('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize', tab===t?'btn-primary':'btn-ghost')}>
             {t==='archived' && <Archive size={13}/>}
             {t==='active'?'Active':'Archived'}
@@ -1108,71 +1524,223 @@ function ReportsList({ onNew, onView, onEdit }: { onNew: () => void; onView: (id
         ))}
       </div>
 
+      <div className="flex items-center gap-1 mb-4">
+        {completionTabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => { setCompletionFilter(t.key); setPage(1); }}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+              completionFilter === t.key
+                ? 'bg-accent/10 text-accent border border-accent/30'
+                : 'btn-ghost opacity-70'
+            )}
+          >
+            {t.key === 'finished'    && <CheckCircle2 size={11} className="text-green-500" />}
+            {t.key === 'in-progress' && <AlertCircle  size={11} className="text-amber-500" />}
+            {t.label}
+            <span className={clsx(
+              'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+              completionFilter === t.key ? 'bg-accent/20 text-accent' : 'bg-bg-input text-text-muted'
+            )}>
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* FIXED: Search + Filters section */}
       <div className="card p-4 mb-5 space-y-3">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"/>
-            <input className="input-base pl-9 text-sm w-full" placeholder="Search by title or program…"
-              value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}/>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search input - fixed */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input 
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+              placeholder="Search by title or program…"
+              value={search} 
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
           </div>
-          <button onClick={() => setShowFilters(f=>!f)} className={clsx('btn-ghost text-sm gap-2 shrink-0', hasActiveFilters&&'text-accent border-accent')}>
-            <ChevronDown size={14} className={clsx('transition-transform', showFilters&&'rotate-180')}/>
-            Filters
-            {hasActiveFilters && <span className="w-4 h-4 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold">{[dateFrom,dateTo,minTrainees,maxTrainees].filter(Boolean).length}</span>}
+
+          {/* Filter toggle button - fixed */}
+          <button 
+            onClick={() => setShowFilters(f=>!f)} 
+            className={clsx(
+              'h-10 px-4 rounded-lg text-sm font-medium flex items-center gap-2 transition-all shrink-0',
+              hasActiveFilters 
+                ? 'bg-accent/10 text-accent border border-accent' 
+                : 'border border-border bg-transparent text-text-secondary hover:bg-bg-input hover:text-text-primary'
+            )}
+          >
+            <Filter size={14} />
+            <span>Filters</span>
+            <ChevronDown 
+              size={14} 
+              className={clsx('transition-transform', showFilters && 'rotate-180')} 
+            />
+            {hasActiveFilters && (
+              <span className="ml-1 w-5 h-5 rounded-full bg-accent text-white text-xs flex items-center justify-center font-medium">
+                {[dateFrom,dateTo,minTrainees,maxTrainees].filter(Boolean).length}
+              </span>
+            )}
           </button>
         </div>
+
         <AnimatePresence>
           {showFilters && (
-            <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.18 }} className="overflow-hidden">
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: 'auto', opacity: 1 }} 
+              exit={{ height: 0, opacity: 0 }} 
+              transition={{ duration: 0.18 }} 
+              className="overflow-hidden"
+            >
               <div className="pt-2 border-t border-border">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div><label className="label text-xs mb-1 block">Date From</label><input type="date" className="input-base text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}/></div>
-                  <div><label className="label text-xs mb-1 block">Date To</label><input type="date" className="input-base text-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}/></div>
-                  <div><label className="label text-xs mb-1 block">Min Trainees</label><input type="number" min="0" className="input-base text-sm" placeholder="e.g. 5" value={minTrainees} onChange={e => { setMinTrainees(e.target.value); setPage(1); }}/></div>
-                  <div><label className="label text-xs mb-1 block">Max Trainees</label><input type="number" min="0" className="input-base text-sm" placeholder="e.g. 30" value={maxTrainees} onChange={e => { setMaxTrainees(e.target.value); setPage(1); }}/></div>
+                  {/* Date From - fixed */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Date From</label>
+                    <input 
+                      type="date" 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                      value={dateFrom} 
+                      onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                  {/* Date To - fixed */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Date To</label>
+                    <input 
+                      type="date" 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                      value={dateTo} 
+                      onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                  {/* Min Trainees - fixed */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Min Trainees</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                      placeholder="e.g. 5" 
+                      value={minTrainees} 
+                      onChange={e => { setMinTrainees(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                  {/* Max Trainees - fixed */}
+                  <div>
+                    <label className="label text-xs mb-1 block">Max Trainees</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                      placeholder="e.g. 30" 
+                      value={maxTrainees} 
+                      onChange={e => { setMaxTrainees(e.target.value); setPage(1); }}
+                    />
+                  </div>
                 </div>
-                {hasActiveFilters && <button onClick={clearFilters} className="btn-ghost text-xs mt-3 text-red-400 hover:text-red-500">✕ Clear all filters</button>}
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="btn-ghost text-xs mt-3 text-red-400 hover:text-red-500">
+                    ✕ Clear all filters
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
+      {/* Rest of the component remains the same from here */}
       <div className="card overflow-hidden">
         <table className="data-table">
-          <thead><tr><th>Title / Program</th><th>Trainees</th><th>Created By</th><th>Date</th><th>Action</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Title / Program</th>
+              <th>Trainees</th>
+              <th>Created By</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
           <tbody>
-            {isLoading ? [...Array(limit)].map((_,i) => <tr key={i}>{[...Array(5)].map((_,j) => <td key={j}><div className="skeleton"/></td>)}</tr>)
-            : reports.length === 0 ? (
+            {isLoading ? (
+              [...Array(limit)].map((_,i) => (
+                <tr key={i}>{[...Array(5)].map((_,j) => <td key={j}><div className="skeleton"/></td>)}</tr>
+              ))
+            ) : reports.length === 0 ? (
               <tr><td colSpan={5} className="text-center py-16">
                 <div className="text-4xl mb-3">{tab==='archived'?'🗄️':'📋'}</div>
-                <div className="text-sm text-text-muted mb-3">{tab==='archived'?'No archived reports.':'No reports yet.'}</div>
-                {tab==='active'&&<button onClick={onNew} className="btn-primary text-sm mx-auto"><Plus size={14}/> Create First Report</button>}
+                <div className="text-sm text-text-muted mb-3">
+                  {completionFilter !== 'all'
+                    ? `No ${completionFilter === 'finished' ? 'fully finished' : 'in-progress'} reports on this page.`
+                    : tab === 'archived' ? 'No archived reports.' : 'No reports yet.'
+                  }
+                </div>
+                {tab==='active' && completionFilter==='all' && (
+                  <button onClick={onNew} className="btn-primary text-sm mx-auto"><Plus size={14}/> Create First Report</button>
+                )}
               </td></tr>
-            ) : reports.map((r: any) => (
-              <tr key={r.id}>
-                <td>
-                  <div className="font-semibold text-sm text-text-primary">{r.title}</div>
-                  {r.program_title&&<div className="text-xs text-text-muted">{r.program_title}</div>}
-                </td>
-                <td><span className="badge badge-blue">{r.trainee_count} trainee{r.trainee_count!==1?'s':''}</span></td>
-                <td className="text-xs text-text-muted">{r.creator_name||'—'}</td>
-                <td className="text-xs text-text-muted">{new Date(r.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</td>
-                <td>
-                  <div className="flex items-center gap-1">
-                    {tab==='active' ? (
-                      <>
-                        <button title="View / Print" onClick={() => onView(r.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors"><Eye size={14}/></button>
-                        <button title="Edit" onClick={() => onEdit(r.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-amber-400 transition-colors"><Pencil size={14}/></button>
-                        <button title="Archive" onClick={() => setArchiveTarget({ id:r.id, title:r.title })} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors"><Archive size={14}/></button>
-                      </>
-                    ) : (
-                      <button title="Restore" onClick={() => setRestoreTarget({ id:r.id, title:r.title })} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-green-500 transition-colors"><RefreshCw size={14}/></button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+            ) : reports.map((r: any) => {
+              const finished     = r.finished_count ?? 0;
+              const traineeTotal = r.trainee_count  ?? 0;
+              const allDone      = traineeTotal > 0 && finished === traineeTotal;
+              const pct          = traineeTotal === 0 ? 0 : Math.round((finished / traineeTotal) * 100);
+              return (
+                <tr key={r.id}>
+                  <td>
+                    <div className="font-semibold text-sm text-text-primary">{r.title}</div>
+                    {r.program_title && <div className="text-xs text-text-muted">{r.program_title}</div>}
+                  </td>
+                  <td>
+                    <div className="flex flex-col gap-1.5 min-w-[110px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="badge badge-blue">{traineeTotal} trainee{traineeTotal!==1?'s':''}</span>
+                        {allDone && traineeTotal > 0 && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-green-500 whitespace-nowrap">
+                            <CheckCircle2 size={10}/> All finished
+                          </span>
+                        )}
+                        {!allDone && finished > 0 && (
+                          <span className="text-[10px] font-semibold text-amber-500 whitespace-nowrap">
+                            {finished}/{traineeTotal} done
+                          </span>
+                        )}
+                      </div>
+                      {traineeTotal > 0 && (
+                        <div className="h-1 w-full rounded-full bg-bg-input overflow-hidden">
+                          <div
+                            className={clsx(
+                              'h-full rounded-full transition-all duration-500',
+                              allDone ? 'bg-green-500' : finished > 0 ? 'bg-amber-400' : 'bg-border'
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="text-xs text-text-muted">{r.creator_name||'—'}</td>
+                  <td className="text-xs text-text-muted">{new Date(r.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</td>
+                  <td>
+                    <div className="flex items-center gap-1">
+                      {tab==='active' ? (
+                        <>
+                          <button title="View / Print" onClick={() => onView(r.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-accent transition-colors"><Eye size={14}/></button>
+                          <button title="Edit" onClick={() => onEdit(r.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-amber-400 transition-colors"><Pencil size={14}/></button>
+                          <button title="Archive" onClick={() => setArchiveTarget({ id:r.id, title:r.title })} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 transition-colors"><Archive size={14}/></button>
+                        </>
+                      ) : (
+                        <button title="Restore" onClick={() => setRestoreTarget({ id:r.id, title:r.title })} className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-green-500 transition-colors"><RefreshCw size={14}/></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <div className="flex items-center justify-end gap-4 px-4 py-3 border-t border-border">
@@ -1197,15 +1765,12 @@ export default function Reports() {
   const [mode, setMode] = useState<'list'|'new'|'view'|'edit'>('list');
   const [activeId, setActiveId] = useState<number|null>(null);
 
-  // VIEW — read-only print preview, completely separate from edit
   if (mode === 'view' && activeId)
     return <ReportView reportId={activeId} onBack={() => { setMode('list'); setActiveId(null); }} onEdit={() => setMode('edit')} />;
 
-  // EDIT — wizard pre-filled at step 2, all steps unlocked
   if (mode === 'edit' && activeId)
     return <EditWizard reportId={activeId} onDone={() => { setMode('list'); setActiveId(null); }} />;
 
-  // NEW — fresh wizard starting at step 0
   if (mode === 'new')
     return <NewWizard onDone={() => setMode('list')} />;
 

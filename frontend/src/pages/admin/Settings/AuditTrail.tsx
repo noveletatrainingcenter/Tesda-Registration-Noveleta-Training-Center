@@ -71,22 +71,31 @@ export default function AuditTrail() {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Filters - FIXED */}
       <div className="card p-4 mb-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Search input - fixed */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
-              className="input-base pl-9 text-sm w-full"
+              className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
               placeholder="Search user or details…"
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
+          
+          {/* Action dropdown - fixed */}
           <select
-            className="input-base text-sm"
+            className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none"
             value={action}
             onChange={e => { setAction(e.target.value); setPage(1); }}
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 1rem center',
+              backgroundSize: '16px'
+            }}
           >
             <option value="">All Actions</option>
             <option value="create">Create / Register</option>
@@ -94,17 +103,24 @@ export default function AuditTrail() {
             <option value="delete">Delete / Archive</option>
             <option value="login">Login</option>
           </select>
+          
+          {/* Date From - fixed */}
           <input
-            type="date" className="input-base text-sm w-full"
+            type="date" 
+            className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
             value={dateFrom}
             onChange={e => { setDateFrom(e.target.value); setPage(1); }}
           />
+          
+          {/* Date To - fixed */}
           <input
-            type="date" className="input-base text-sm w-full"
+            type="date" 
+            className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
             value={dateTo}
             onChange={e => { setDateTo(e.target.value); setPage(1); }}
           />
         </div>
+        
         {hasFilters && (
           <button onClick={clearFilters} className="btn-ghost text-xs mt-3 text-red-400 hover:text-red-500">
             ✕ Clear all filters

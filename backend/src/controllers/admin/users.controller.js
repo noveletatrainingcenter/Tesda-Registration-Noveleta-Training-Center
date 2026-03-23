@@ -14,8 +14,8 @@ export async function getUsers(request, reply) {
     const params     = [];
 
     if (search) {
-      conditions.push('(full_name LIKE ? OR username LIKE ? OR email LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      conditions.push('(full_name LIKE ? OR username LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -26,7 +26,7 @@ export async function getUsers(request, reply) {
     );
 
     const [rows] = await db.execute(
-      `SELECT id, username, email, role, full_name, is_active, last_login, created_at
+      `SELECT id, username, role, full_name, is_active, last_login, created_at
        FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, limitNum, offset]
     );
@@ -44,7 +44,7 @@ export async function getUsers(request, reply) {
 }
 
 export async function createUser(request, reply) {
-  const { username, email, password, role, full_name, security_question, security_answer } = request.body;
+  const { username, password, role, full_name, security_question, security_answer } = request.body;
   if (!username || !password || !full_name) {
     return reply.code(400).send({ success: false, message: 'Username, password, and full name are required.' });
   }
@@ -59,9 +59,9 @@ export async function createUser(request, reply) {
     const answerHash = security_answer ? await bcrypt.hash(security_answer.toLowerCase().trim(), 10) : null;
 
     await db.execute(
-      `INSERT INTO users (id, username, email, password_hash, role, full_name, security_question, security_answer_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [employeeId, username, email || null, hash, role || 'encoder', full_name,
+      `INSERT INTO users (id, username, password_hash, role, full_name, security_question, security_answer_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [employeeId, username, hash, role || 'encoder', full_name,
        security_question || null, answerHash]
     );
 
@@ -72,7 +72,7 @@ export async function createUser(request, reply) {
 
     return reply.code(201).send({ success: true, id: employeeId, message: 'User created successfully.' });
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return reply.code(409).send({ success: false, message: 'Username or email already exists.' });
+    if (err.code === 'ER_DUP_ENTRY') return reply.code(409).send({ success: false, message: 'Username already exists.' });
     return reply.code(500).send({ success: false, message: 'Server error: ' + err.message });
   }
 }
@@ -114,7 +114,7 @@ export async function toggleUserStatus(request, reply) {
 
 export async function updateUser(request, reply) {
   const { id } = request.params;
-  const { username, email, password, full_name, role, security_question, security_answer } = request.body;
+  const { username, password, full_name, role, security_question, security_answer } = request.body;
 
   try {
     const [[target]] = await db.execute(
@@ -149,24 +149,12 @@ export async function updateUser(request, reply) {
       }
     }
 
-    // Check email uniqueness (excluding current user)
-    if (email) {
-      const [[emailConflict]] = await db.execute(
-        'SELECT id FROM users WHERE email = ? AND id != ?',
-        [email, id]
-      );
-      if (emailConflict) {
-        return reply.code(409).send({ success: false, message: 'Email already in use.' });
-      }
-    }
-
     const fields = [];
     const params = [];
 
-    if (full_name)           { fields.push('full_name = ?');   params.push(full_name); }
-    if (username)            { fields.push('username = ?');    params.push(username); }
-    if (email !== undefined) { fields.push('email = ?');       params.push(email || null); }
-    if (role)                { fields.push('role = ?');        params.push(role); }
+    if (full_name)  { fields.push('full_name = ?');   params.push(full_name); }
+    if (username)   { fields.push('username = ?');    params.push(username); }
+    if (role)       { fields.push('role = ?');        params.push(role); }
 
     if (password) {
       const hash = await bcrypt.hash(password, 10);
@@ -207,8 +195,43 @@ export async function updateUser(request, reply) {
     return reply.send({ success: true, message: 'User updated successfully.' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      return reply.code(409).send({ success: false, message: 'Username or email already exists.' });
+      return reply.code(409).send({ success: false, message: 'Username already exists.' });
     }
     return reply.code(500).send({ success: false, message: 'Server error: ' + err.message });
+  }
+}
+
+// HOME CONTROLLER // HOME CONTROLLER // HOME CONTROLLER // HOME CONTROLLER // HOME CONTROLLER // HOME CONTROLLER
+
+export async function getUserStats(request, reply) {
+  try {
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) as total FROM users`);
+    
+    const [[{ active }]] = await db.execute(
+      `SELECT COUNT(*) as active FROM users WHERE is_active = 1`
+    );
+    
+    const [[{ inactive }]] = await db.execute(
+      `SELECT COUNT(*) as inactive FROM users WHERE is_active = 0`
+    );
+    
+    const [[{ admins }]] = await db.execute(
+      `SELECT COUNT(*) as admins FROM users WHERE role = 'admin'`
+    );
+    
+    const [[{ encoders }]] = await db.execute(
+      `SELECT COUNT(*) as encoders FROM users WHERE role = 'encoder'`
+    );
+
+    return reply.send({
+      total,
+      active,
+      inactive,
+      admins,
+      encoders
+    });
+  } catch (err) {
+    request.log.error(err);
+    return reply.code(500).send({ success: false, message: 'Server error.' });
   }
 }

@@ -11,7 +11,6 @@ USE tesda_registration;
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(9) PRIMARY KEY COMMENT 'Employee ID: 4-digit year + 5 digits',
   username VARCHAR(50) NOT NULL UNIQUE,
-  email VARCHAR(100) UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('admin', 'encoder') NOT NULL DEFAULT 'encoder',
   full_name VARCHAR(150),
@@ -148,16 +147,16 @@ INSERT IGNORE INTO courses (name, sector) VALUES
 -- Password for both: Admin@12345 / Encoder@12345
 -- =============================================
 
-INSERT IGNORE INTO users (id, username, email, password_hash, role, full_name, security_question, security_answer_hash) VALUES
-('202600001', 'admin', 'admin@tesda-noveleta.gov.ph',
+INSERT IGNORE INTO users (id, username, password_hash, role, full_name, security_question, security_answer_hash) VALUES
+('202600001', 'admin',
  '$2b$10$xUWElhgQurTSaDm1cVu.cuIgaTdlnBeH8uCh7Y9QXgbGEVSdUdkgi',
  'admin', 'System Administrator',
  'What is the name of your first school?',
  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVyYnB.CVu'),
-('202600002', 'encoder1', 'encoder1@tesda-noveleta.gov.ph',
+('202600002', 'encoder1',
  '$2b$10$MjcI3dtNCAMYcnbPx7q1ZO.iOSmSmm/QiiRmfCueQaeNNZ1BpIgM.',
  'encoder', 'Data Encoder 1', NULL, NULL),
-('202600003', 'encoder2', NULL,
+('202600003', 'encoder2',
  '$2b$10$MjcI3dtNCAMYcnbPx7q1ZO.iOSmSmm/QiiRmfCueQaeNNZ1BpIgM.',
  'encoder', 'Data Encoder 2', NULL, NULL);
 
