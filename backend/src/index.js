@@ -12,6 +12,7 @@ import { testConnection } from './config/db.js';
 import authRoutes from './routes/shared/auth.routes.js';
 import accountRoutes from './routes/shared/account.routes.js';
 import registrationRoutes from './routes/shared/registration.routes.js';
+import sectorRoutes from './routes/shared/sector.routes.js';
 import courseRoutes from './routes/shared/course.routes.js';
 import reportRoutes from './routes/shared/report.routes.js';
 
@@ -40,7 +41,8 @@ await fastify.register(cookie);
 await fastify.register(authRoutes,          { prefix: '/api/auth' });
 await fastify.register(accountRoutes,       { prefix: '/api/account' });
 await fastify.register(registrationRoutes,  { prefix: '/api/registrations' });
-await fastify.register(courseRoutes,  { prefix: '/api/courses'  });
+await fastify.register(courseRoutes,        { prefix: '/api/courses' })
+await fastify.register(sectorRoutes, { prefix: '/api/sectors' });
 await fastify.register(reportRoutes,  { prefix: '/api/reports' }); 
 
 // ── Admin routes ──────────────────────────────────────────────────────────

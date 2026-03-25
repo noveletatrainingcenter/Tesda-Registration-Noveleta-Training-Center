@@ -188,8 +188,8 @@ function downloadAsExcel(
       if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
       ws[cellAddr].s = {
         fill: { fgColor: { rgb: color }, patternType: 'solid' },
-        font: { bold: true, sz: 8 },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        font: { bold: true, sz: 11, name: 'Calibri' },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
         border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
       };
     }
@@ -200,8 +200,8 @@ function downloadAsExcel(
     if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
     ws[cellAddr].s = {
       fill: { fgColor: { rgb: '555555' }, patternType: 'solid' },
-      font: { bold: true, sz: 7, color: { rgb: 'FFFFFF' } },
-      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      font: { bold: true, sz: 11, name: 'Calibri', color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
       border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
     };
   }
@@ -211,8 +211,8 @@ function downloadAsExcel(
     if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
     ws[cellAddr].s = {
       fill: { fgColor: { rgb: 'FFE066' }, patternType: 'solid' },
-      font: { bold: true, sz: 7 },
-      alignment: { horizontal: 'center', vertical: 'center' },
+      font: { bold: true, sz: 11, name: 'Calibri' },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
       border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
     };
   }
@@ -221,22 +221,30 @@ function downloadAsExcel(
     for (let c = 0; c < 42; c++) {
       const cellAddr = XLSX.utils.encode_cell({ r, c });
       if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };
+      const isDateCol = c === 35 || c === 36;
       ws[cellAddr].s = {
-        font: { sz: 7 },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        font: { sz: 11, name: 'Calibri', bold: isDateCol },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
         border: { top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'} },
       };
     }
   }
 
-  ws['!cols'] = Array(42).fill(null).map((_, i) => {
-    // Address columns get more width
-    if (i === 6 || i === 22) return { wch: 25 };
-    // Name, barangay, city columns
-    if (i === 4 || i === 17 || i === 18 || i === 23 || i === 24) return { wch: 20 };
-    // Default
-    return { wch: 15 };
-  });
+  ws['!cols'] = rows[1].map((header: any, colIdx: number) => {
+    // Start with the header text length
+    let maxLen = header ? String(header).length : 10;
+
+    // Check all data rows for longer content
+    for (let r = 3; r < rows.length; r++) {
+      const cellVal = rows[r][colIdx];
+      if (cellVal) {
+        maxLen = Math.max(maxLen, String(cellVal).length);
+      }
+    }
+
+    // Add padding and cap it so columns don't go insane
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 50) };
+});
   ws['!rows'] = [{ hpt: 30 }, { hpt: 40 }, { hpt: 14 }];
 
   const wb = XLSX.utils.book_new();
@@ -459,7 +467,7 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
   }
   function suggestId(idx: number) { return `NTC-${sectorCode || 'S'}-${String(idx+1).padStart(4,'0')}`; }
 
-  const cellStyle: React.CSSProperties = { border:'1px solid #000', padding:'2px 3px', fontSize:9, verticalAlign:'middle', textAlign:'center', background:'#fff', color:'#000', whiteSpace:'nowrap' };
+  const cellStyle: React.CSSProperties = { border:'1px solid #000', padding:'2px 3px', fontSize:9, verticalAlign:'middle', textAlign:'center', background:'#fff', color:'#000', whiteSpace:'normal', wordBreak:'break-word', minWidth:'40px', maxWidth:'150px' };
   const dateCellStyle: React.CSSProperties = { ...cellStyle, fontWeight: 'bold' };
   const colHeaderStyle: React.CSSProperties = { background:'#555', color:'#fff', fontSize:7, padding:'2px 1px', border:'1px solid #000', whiteSpace:'normal' as const, lineHeight:1.2 };
   const colLetterStyle: React.CSSProperties = { background:'#ffe066', color:'#000', fontSize:8, padding:'2px 1px', border:'1px solid #000' };
@@ -471,17 +479,7 @@ function ReportTable({ provider, applicants, extras, sectorCode, selectedCourse 
         <div style={{ fontSize:11, fontWeight:'bold', marginTop:1, color:'#000' }}>Noveleta Training Center</div>
         {(provider.program_title || selectedCourse?.name) && <div style={{ fontSize:11, marginTop:1, color:'#000' }}>{provider.program_title || selectedCourse?.name}</div>}
       </div>
-      <table style={{ width:'5000px', tableLayout:'fixed', borderCollapse:'collapse', background:'#fff' }}>
-        <colgroup>
-          <col style={{width:'55px'}}/><col style={{width:'55px'}}/><col style={{width:'50px'}}/><col style={{width:'65px'}}/>
-          <col style={{width:'90px'}}/><col style={{width:'60px'}}/><col style={{width:'120px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/>
-          <col style={{width:'70px'}}/><col style={{width:'60px'}}/><col style={{width:'80px'}}/><col style={{width:'70px'}}/><col style={{width:'55px'}}/><col style={{width:'70px'}}/><col style={{width:'70px'}}/>
-          <col style={{width:'70px'}}/><col style={{width:'70px'}}/><col style={{width:'70px'}}/><col style={{width:'60px'}}/><col style={{width:'65px'}}/><col style={{width:'75px'}}/>
-          <col style={{width:'80px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/><col style={{width:'50px'}}/><col style={{width:'65px'}}/><col style={{width:'40px'}}/>
-          <col style={{width:'60px'}}/><col style={{width:'35px'}}/><col style={{width:'55px'}}/><col style={{width:'90px'}}/>
-          <col style={{width:'65px'}}/><col style={{width:'60px'}}/><col style={{width:'55px'}}/><col style={{width:'60px'}}/><col style={{width:'60px'}}/><col style={{width:'65px'}}/><col style={{width:'65px'}}/>
-          <col style={{width:'60px'}}/><col style={{width:'70px'}}/><col style={{width:'70px'}}/>
-        </colgroup>
+      <table style={{ borderCollapse:'collapse', background:'#fff' }}>
         <thead>
           <tr>
             <td colSpan={9} style={{background:'#f4a7b9',textAlign:'center',fontWeight:'bold',fontSize:9,padding:'3px',border:'1px solid #000',color:'#000'}}>TVET Providers Profile</td>
@@ -592,7 +590,7 @@ function ReportView({ reportId, onBack, onEdit }: {
   const trainees: any[] = report.trainees || [];
   const sectorCode = SECTOR_CODES[report.industry_sector] || 'S';
   const applicants = trainees.map((t: any) => ({
-    id: t.registration_id, last_name: t.last_name||'', first_name: t.first_name||'',
+    id: Number(t.registration_id), last_name: t.last_name||'', first_name: t.first_name||'',
     middle_name: t.middle_name||'', contact_no: t.contact_no||'', email: t.email||'',
     sex: t.sex||'', age: t.age||'', civil_status: t.civil_status||'',
     educational_attainment: t.educational_attainment||'',
@@ -603,7 +601,7 @@ function ReportView({ reportId, onBack, onEdit }: {
   }));
   const extras: Record<number, TraineeExtra> = {};
   for (const t of trainees) {
-    extras[t.registration_id] = {
+    extras[Number(t.registration_id)] = {
       registration_id: t.registration_id, student_id_number: t.student_id_number||'',
       pgs_training_component: t.pgs_training_component||'', voucher_number: t.voucher_number||'',
       client_type: t.client_type||'', date_started: t.date_started||'', date_finished: t.date_finished||'',
@@ -620,6 +618,7 @@ function ReportView({ reportId, onBack, onEdit }: {
     };
   }
 
+  console.log('extras sample:', Object.values(extras)[0]);
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
@@ -748,79 +747,234 @@ function StepSelectCourse({ selectedCourse, setSelectedCourse, programInfo, setP
   );
 }
 
-function StepSelectApplicants({ selectedIds, setSelectedIds }: {
-  selectedIds: number[]; setSelectedIds: (ids: number[]) => void;
+function StepSelectApplicants({
+  selectedIds,
+  setSelectedIds,
+  courseName,
+}: {
+  selectedIds: number[];
+  setSelectedIds: (ids: number[]) => void;
+  courseName: string;
 }) {
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [search, setSearch]               = useState('');
+  const [page, setPage]                   = useState(1);
+  const [limit, setLimit]                 = useState(10);
+  const [hideEnrolled, setHideEnrolled]   = useState(true);
+
+  // Fetch IDs already enrolled in this course
+  const { data: enrolledData } = useQuery({
+    queryKey: ['enrolled-ids', courseName],
+    queryFn: (): Promise<number[]> =>
+      api.get('/reports/enrolled-ids', { params: { course_name: courseName } })
+        .then(r => r.data.data as number[]),
+    enabled: !!courseName,
+    staleTime: 30000,
+  });
+  const enrolledIds = new Set<number>(enrolledData ?? []);
+
   const { data, isLoading } = useQuery({
     queryKey: ['all-applicants-report', search, page, limit],
-    queryFn: () => api.get('/registrations', { params:{ page, limit, search, status:'active' } }).then(r => r.data),
+    queryFn: () =>
+      api.get('/registrations', { params: { page, limit, search, status: 'active' } })
+         .then(r => r.data),
     staleTime: 10000,
   });
-  const applicants: any[] = data?.data || [];
+
+  const allApplicants: any[] = data?.data || [];
   const pages = data?.pages || 1;
   const total = data?.total || 0;
-  function toggle(id: number) { setSelectedIds(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]); }
+
+  // Apply the hide filter on top of paginated results
+  const applicants = hideEnrolled
+    ? allApplicants.filter(r => !enrolledIds.has(r.id))
+    : allApplicants;
+
+  const enrolledOnPageCount = allApplicants.filter(r => enrolledIds.has(r.id)).length;
+
+  function toggle(id: number) {
+    setSelectedIds(
+      selectedIds.includes(id)
+        ? selectedIds.filter(x => x !== id)
+        : [...selectedIds, id]
+    );
+  }
+
   function togglePage() {
     const pageIds = applicants.map((r: any) => r.id);
     const allSelected = pageIds.every(id => selectedIds.includes(id));
     if (allSelected) setSelectedIds(selectedIds.filter(id => !pageIds.includes(id)));
     else setSelectedIds([...new Set([...selectedIds, ...pageIds])]);
   }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="form-section-title"><User size={15}/> Select Applicants for This Batch</div>
-        {selectedIds.length > 0 && <span className="badge badge-blue">{selectedIds.length} selected</span>}
+      {/* Header row */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="form-section-title">
+          <User size={15} /> Select Applicants for This Batch
+        </div>
+        {selectedIds.length > 0 && (
+          <span className="badge badge-blue">{selectedIds.length} selected</span>
+        )}
       </div>
+
+      {/* Notice banner */}
+      {enrolledIds.size > 0 && (
+        <div className={clsx(
+          'flex items-start gap-3 px-4 py-3 rounded-xl border text-sm',
+          hideEnrolled
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+            : 'bg-bg-input border-border text-text-muted'
+        )}>
+          <AlertCircle size={15} className="shrink-0 mt-0.5" />
+          <div className="flex-1 leading-snug">
+            <span className="font-semibold">{enrolledIds.size} applicant{enrolledIds.size !== 1 ? 's are' : ' is'} already enrolled</span>
+            {' '}in <span className="font-medium">{courseName}</span>.
+            {hideEnrolled
+              ? ` ${enrolledOnPageCount > 0 ? `(${enrolledOnPageCount} hidden on this page)` : ''} Toggle to show them anyway.`
+              : ' They are shown below with a warning badge.'}
+          </div>
+          {/* Toggle switch */}
+          <button
+            type="button"
+            onClick={() => setHideEnrolled(h => !h)}
+            className="flex items-center gap-2 shrink-0 text-xs font-semibold"
+          >
+            <span className={clsx('text-xs', hideEnrolled ? 'text-amber-500' : 'text-text-muted')}>
+              {hideEnrolled ? 'Hiding enrolled' : 'Showing all'}
+            </span>
+            <div className={clsx(
+              'relative w-9 h-5 rounded-full transition-colors duration-200',
+              hideEnrolled ? 'bg-amber-500' : 'bg-bg-input border border-border'
+            )}>
+              <div className={clsx(
+                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200',
+                hideEnrolled ? 'translate-x-4' : 'translate-x-0.5'
+              )} />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Search */}
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"/>
-        <input className="input-base pl-9 text-sm" placeholder="Search by name, contact…"
-          value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}/>
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+        <input
+          className="input-base pl-9 text-sm"
+          placeholder="Search by name, contact…"
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+        />
       </div>
+
+      {/* Table */}
       <div className="card overflow-hidden">
         <table className="data-table">
-          <thead><tr>
-            <th className="w-10">
-              <input type="checkbox" className="rounded"
-                checked={applicants.length > 0 && applicants.every((r: any) => selectedIds.includes(r.id))}
-                onChange={togglePage}/>
-            </th>
-            <th>Name</th><th>Contact</th><th>Sex</th><th>Civil Status</th>
-          </tr></thead>
+          <thead>
+            <tr>
+              <th className="w-10">
+                <input
+                  type="checkbox"
+                  className="rounded"
+                  checked={applicants.length > 0 && applicants.every((r: any) => selectedIds.includes(r.id))}
+                  onChange={togglePage}
+                />
+              </th>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Sex</th>
+              <th>Civil Status</th>
+              {!hideEnrolled && <th>Status</th>}
+            </tr>
+          </thead>
           <tbody>
-            {isLoading ? [...Array(limit)].map((_,i) => <tr key={i}>{[...Array(5)].map((_,j) => <td key={j}><div className="skeleton"/></td>)}</tr>)
-            : applicants.length === 0 ? <tr><td colSpan={5} className="text-center py-10 text-text-muted text-sm">No applicants found.</td></tr>
-            : applicants.map((r: any) => (
-              <tr key={r.id} onClick={() => toggle(r.id)} className={clsx('cursor-pointer transition-colors', selectedIds.includes(r.id) && 'bg-accent/5')}>
-                <td onClick={e => e.stopPropagation()}>
-                  <input type="checkbox" className="rounded" checked={selectedIds.includes(r.id)} onChange={() => toggle(r.id)}/>
-                </td>
-                <td>
-                  <div className="font-medium text-sm text-text-primary">{r.last_name}, {r.first_name}{r.middle_name ? ` ${r.middle_name[0]}.` : ''}</div>
-                  <div className="text-xs text-text-muted">{r.contact_no||'—'}</div>
-                </td>
-                <td className="text-xs text-text-secondary">{r.contact_no||'—'}</td>
-                <td><span className="badge badge-blue text-xs">{r.sex||'—'}</span></td>
-                <td className="text-xs text-text-secondary">{r.civil_status||'—'}</td>
-              </tr>
-            ))}
+            {isLoading
+              ? [...Array(limit)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(hideEnrolled ? 5 : 6)].map((_, j) => (
+                      <td key={j}><div className="skeleton" /></td>
+                    ))}
+                  </tr>
+                ))
+              : applicants.length === 0
+              ? (
+                <tr>
+                  <td colSpan={hideEnrolled ? 5 : 6} className="text-center py-10 text-text-muted text-sm">
+                    {hideEnrolled && enrolledOnPageCount > 0
+                      ? 'All applicants on this page are already enrolled. Toggle to show them.'
+                      : 'No applicants found.'}
+                  </td>
+                </tr>
+              )
+              : applicants.map((r: any) => {
+                  const isEnrolled = enrolledIds.has(r.id);
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={() => toggle(r.id)}
+                      className={clsx(
+                        'cursor-pointer transition-colors',
+                        selectedIds.includes(r.id) && 'bg-accent/5',
+                        isEnrolled && !hideEnrolled && 'opacity-75'
+                      )}
+                    >
+                      <td onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="rounded"
+                          checked={selectedIds.includes(r.id)}
+                          onChange={() => toggle(r.id)}
+                        />
+                      </td>
+                      <td>
+                        <div className="font-medium text-sm text-text-primary">
+                          {r.last_name}, {r.first_name}
+                          {r.middle_name ? ` ${r.middle_name[0]}.` : ''}
+                        </div>
+                        <div className="text-xs text-text-muted">{r.contact_no || '—'}</div>
+                      </td>
+                      <td className="text-xs text-text-secondary">{r.contact_no || '—'}</td>
+                      <td>
+                        <span className="badge badge-blue text-xs">{r.sex || '—'}</span>
+                      </td>
+                      <td className="text-xs text-text-secondary">{r.civil_status || '—'}</td>
+                      {!hideEnrolled && (
+                        <td>
+                          {isEnrolled ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                              <AlertCircle size={9} /> Already enrolled
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/10 text-green-500">
+                              <CheckCircle2 size={9} /> Eligible
+                            </span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
           </tbody>
         </table>
+
+        {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-2 border-t border-border">
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted whitespace-nowrap">Rows per page:</span>
-            <select className="text-xs py-1 px-2 rounded-lg border border-border bg-bg-input text-text-primary w-16 cursor-pointer"
-              value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}>
+            <select
+              className="text-xs py-1 px-2 rounded-lg border border-border bg-bg-input text-text-primary w-16 cursor-pointer"
+              value={limit}
+              onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
+            >
               {PAGE_SIZE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-muted">{total === 0 ? '0–0 of 0' : `${(page-1)*limit+1}–${Math.min(page*limit,total)} of ${total}`}</span>
-            <button className="btn-ghost text-xs py-1 px-2" disabled={page<=1} onClick={() => setPage(p=>p-1)}>← Prev</button>
-            <button className="btn-ghost text-xs py-1 px-2" disabled={page>=pages} onClick={() => setPage(p=>p+1)}>Next →</button>
+            <span className="text-xs text-text-muted">
+              {total === 0 ? '0–0 of 0' : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}
+            </span>
+            <button className="btn-ghost text-xs py-1 px-2" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+            <button className="btn-ghost text-xs py-1 px-2" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>Next →</button>
           </div>
         </div>
       </div>
@@ -828,15 +982,23 @@ function StepSelectApplicants({ selectedIds, setSelectedIds }: {
   );
 }
 
-function StepTrainingDetails({ applicants, extras, setExtras, sectorCode }: {
+function StepTrainingDetails({ applicants, extras, setExtras, sectorCode, selectedCourse, industrySector }: {
   applicants: any[]; extras: Record<number, TraineeExtra>;
   setExtras: (e: Record<number, TraineeExtra>) => void; sectorCode: string;
+  selectedCourse: any; industrySector: string;
 }) {
   const [openId, setOpenId] = useState<number | null>(applicants[0]?.id ?? null);
   function setEx(id: number, k: keyof TraineeExtra, v: string) {
     setExtras({ ...extras, [id]: { ...(extras[id] ?? emptyExtra(id)), [k]:v } });
   }
-  function getEx(id: number): TraineeExtra { return extras[id] ?? emptyExtra(id); }
+  function getEx(id: number): TraineeExtra {
+    if (extras[id]) return extras[id];
+    return {
+      ...emptyExtra(id),
+      delivery_mode: selectedCourse?.name ?? '',
+      industry_sector: industrySector ?? '',
+    };
+  }
   function suggestId(idx: number) { return `NTC-${sectorCode||'S'}-${String(idx+1).padStart(4,'0')}`; }
 
   return (
@@ -1201,12 +1363,12 @@ function EditWizard({ reportId, onDone }: { reportId: number; onDone: () => void
             <StepSelectCourse selectedCourse={selectedCourse} setSelectedCourse={setSelectedCourse} programInfo={programInfo} setProgramInfo={setProgramInfo}/>
           </motion.div>}
           {step === 1 && <motion.div key="s1" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
-            <StepSelectApplicants selectedIds={selectedIds} setSelectedIds={setSelectedIds}/>
+            <StepSelectApplicants selectedIds={selectedIds} setSelectedIds={setSelectedIds} courseName={selectedCourse?.name ?? ''}/>
           </motion.div>}
           {step === 2 && <motion.div key="s2" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
             {selectedApplicants.length === 0
               ? <div className="flex items-center justify-center h-48 text-text-muted text-sm">Loading applicant data…</div>
-              : <StepTrainingDetails applicants={selectedApplicants} extras={extras} setExtras={setExtras} sectorCode={sectorCode}/>}
+              : <StepTrainingDetails applicants={selectedApplicants} extras={extras} setExtras={setExtras} sectorCode={sectorCode} selectedCourse={selectedCourse} industrySector={programInfo.industry_sector}/>}
           </motion.div>}
           {step === 3 && <motion.div key="s3" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
             <StepSignatories provider={provider} setProvider={setProvider}/>
@@ -1367,12 +1529,12 @@ function NewWizard({ onDone }: { onDone: () => void }) {
             <StepSelectCourse selectedCourse={selectedCourse} setSelectedCourse={setSelectedCourse} programInfo={programInfo} setProgramInfo={setProgramInfo}/>
           </motion.div>}
           {step === 1 && <motion.div key="s1" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
-            <StepSelectApplicants selectedIds={selectedIds} setSelectedIds={setSelectedIds}/>
+            <StepSelectApplicants selectedIds={selectedIds} setSelectedIds={setSelectedIds} courseName={selectedCourse?.name ?? ''}/>
           </motion.div>}
           {step === 2 && <motion.div key="s2" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
             {selectedApplicants.length === 0
               ? <div className="flex items-center justify-center h-48 text-text-muted text-sm">Loading applicant data…</div>
-              : <StepTrainingDetails applicants={selectedApplicants} extras={extras} setExtras={setExtras} sectorCode={sectorCode}/>}
+              : <StepTrainingDetails applicants={selectedApplicants} extras={extras} setExtras={setExtras} sectorCode={sectorCode} selectedCourse={selectedCourse} industrySector={programInfo.industry_sector}/>}
           </motion.div>}
           {step === 3 && <motion.div key="s3" variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration:0.18 }}>
             <StepSignatories provider={provider} setProvider={setProvider}/>

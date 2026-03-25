@@ -145,3 +145,35 @@ export async function archiveCourse(request, reply) {
     return reply.code(500).send({ success: false, message: 'Server error.' });
   }
 }
+
+export async function restoreCourse(request, reply) {
+  const { id } = request.params;
+  try {
+    await db.execute('UPDATE courses SET status = "active" WHERE id = ?', [id]);
+    await db.execute('INSERT INTO audit_logs (user_id,user_name,action,module,details,ip_address) VALUES (?,?,?,?,?,?)',
+      [request.user.id, request.user.full_name, 'RESTORE_COURSE', 'Courses', `Restored ID: ${id}`, request.ip]);
+    return reply.send({ success: true, message: 'Course restored.' });
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: 'Server error.' });
+  }
+}
+
+export async function deleteCourse(request, reply) {
+  const { id } = request.params;
+  try {
+    const [[{ count }]] = await db.execute(
+      `SELECT COUNT(*) as count FROM report_trainees rt
+       JOIN reports r ON rt.report_id = r.id
+       WHERE rt.delivery_mode = (SELECT name FROM courses WHERE id = ?)
+       AND r.status = 'active'`,
+      [id]
+    );
+    if (count > 0) return reply.code(409).send({ success: false, message: 'Cannot delete: this course has ongoing reports.' });
+    await db.execute('DELETE FROM courses WHERE id = ?', [id]);
+    await db.execute('INSERT INTO audit_logs (user_id,user_name,action,module,details,ip_address) VALUES (?,?,?,?,?,?)',
+      [request.user.id, request.user.full_name, 'DELETE_COURSE', 'Courses', `Deleted ID: ${id}`, request.ip]);
+    return reply.send({ success: true, message: 'Course deleted.' });
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: 'Server error.' });
+  }
+}

@@ -247,3 +247,33 @@ CREATE TABLE IF NOT EXISTS report_trainees (
   KEY idx_rt_report_id      (report_id),
   KEY idx_rt_registration_id (registration_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Run this on tesda_registration
+CREATE TABLE IF NOT EXISTS sectors (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(150) NOT NULL UNIQUE,
+  is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(9) NULL,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+  FOREIGN KEY (created_by) REFERENCES users(id),
+  INDEX idx_sectors_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed from your existing hardcoded list
+INSERT IGNORE INTO sectors (name) VALUES
+('Agriculture, Forestry and Fishery'),
+('Automotive and Land Transportation'),
+('Construction'),
+('Electrical and Electronics'),
+('Food and Beverage'),
+('Garments, Textiles and Leather Industries'),
+('Health Social and Other Community Development Services'),
+('ICT'),
+('Language and Related Services'),
+('Metals and Engineering'),
+('Personal Services'),
+('Tourism (Hotel and Restaurant)'),
+('Visual Arts and Graphic Design'),
+('Wholesale and Retail Trading / Services'),
+('Others');

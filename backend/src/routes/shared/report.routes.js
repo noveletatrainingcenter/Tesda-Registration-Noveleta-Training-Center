@@ -1,14 +1,15 @@
 // backend/src/routes/shared/report.routes.js
 import {
-  getReports, getReport, createReport, updateReport, archiveReport, restoreReport,
+  getReports, getReport, createReport, updateReport, archiveReport, restoreReport, getEnrolledIds,
 } from '../../controllers/shared/report.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 
 export default async function reportRoutes(fastify) {
-  fastify.get   ('/',          { preHandler: [authenticate] }, getReports);
-  fastify.post  ('/',          { preHandler: [authenticate] }, createReport);
-  fastify.get   ('/:id',       { preHandler: [authenticate] }, getReport);
-  fastify.put   ('/:id',       { preHandler: [authenticate] }, updateReport);
-  fastify.patch ('/:id/archive', { preHandler: [authenticate] }, archiveReport);
-  fastify.patch ('/:id/restore', { preHandler: [authenticate] }, restoreReport);
+  fastify.get   ('/',                { preHandler: [authenticate] }, getReports);
+  fastify.get   ('/enrolled-ids',    { preHandler: [authenticate] }, getEnrolledIds);
+  fastify.post  ('/',                { preHandler: [authenticate] }, createReport);
+  fastify.get   ('/:id',             { preHandler: [authenticate] }, getReport);
+  fastify.put   ('/:id',             { preHandler: [authenticate] }, updateReport);
+  fastify.patch ('/:id/archive',     { preHandler: [authenticate] }, archiveReport);
+  fastify.patch ('/:id/restore',     { preHandler: [authenticate] }, restoreReport);
 }

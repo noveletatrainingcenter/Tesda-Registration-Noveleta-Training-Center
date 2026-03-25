@@ -163,3 +163,23 @@ export async function restoreReport(request, reply) {
     return reply.code(500).send({ success: false, message: 'Server error.' });
   }
 }
+
+export async function getEnrolledIds(request, reply) {
+  const { course_name } = request.query;
+  if (!course_name) return reply.send({ success: true, data: [] });
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT DISTINCT rt.registration_id
+       FROM report_trainees rt
+       JOIN reports r ON rt.report_id = r.id
+       WHERE r.status = 'active'
+         AND rt.delivery_mode = ?`,
+      [course_name]
+    );
+    return reply.send({ success: true, data: rows.map(r => r.registration_id) });
+  } catch (err) {
+    request.log.error(err);
+    return reply.code(500).send({ success: false, message: 'Server error.' });
+  }
+}
