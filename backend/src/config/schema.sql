@@ -22,7 +22,11 @@ CREATE TABLE IF NOT EXISTS users (
   is_active BOOLEAN DEFAULT TRUE,
   last_login DATETIME,
   created_at DATETIME DEFAULT NOW(),
-  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+  users ADD COLUMN email VARCHAR(100) NULL AFTER full_name,
+  otp_code VARCHAR(6) NULL AFTER email,
+  otp_expires_at DATETIME NULL AFTER otp_code,
+  otp_used BOOLEAN DEFAULT FALSE AFTER otp_expires_at;
 );
 
 -- Registration (Full TESDA MIS 03-01 Form)

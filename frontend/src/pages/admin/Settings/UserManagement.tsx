@@ -310,6 +310,7 @@ type EditForm = {
   full_name: string;
   username:  string;
   role:      string;
+  email:     string;
 };
 
 function EditUserModal({
@@ -325,11 +326,13 @@ function EditUserModal({
     full_name: user.full_name || '',
     username:  user.username  || '',
     role:      user.role      || 'encoder',
+    email:     user.email     || '',
   });
 
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [showSecurityDialog, setShowSecurityDialog] = useState(false);
-
+  const [showPasswordDialog,  setShowPasswordDialog]  = useState(false);
+  const [showSecurityDialog,  setShowSecurityDialog]  = useState(false);
+  const [showConfirmDialog,   setShowConfirmDialog]   = useState(false);
+  const [pendingPayload,      setPendingPayload]       = useState<Partial<EditForm> | null>(null);
   const updateFields = useMutation({
     mutationFn: (d: Partial<EditForm>) => api.patch(`/admin/users/${user.id}`, d),
     onSuccess: () => {
@@ -359,17 +362,24 @@ function EditUserModal({
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to update security question.'),
   });
 
-  function handleSave() {
+function handleSave() {
     const payload: Partial<EditForm> = {};
     if (form.full_name !== user.full_name) payload.full_name = form.full_name;
     if (form.username  !== user.username)  payload.username  = form.username;
-    if (form.role      !== user.role)      payload.role      = form.role;
+    if (form.email !== (user.email || '')) payload.email = form.email;
+    if (form.role !== user.role)           payload.role = form.role;
 
     if (Object.keys(payload).length === 0) {
       toast('No changes detected.', { icon: 'ℹ️' });
       return;
     }
-    updateFields.mutate(payload);
+    setPendingPayload(payload);
+    setShowConfirmDialog(true);
+  }
+
+  function handleConfirmSave() {
+    if (pendingPayload) updateFields.mutate(pendingPayload);
+    setShowConfirmDialog(false);
   }
 
   const field = (key: keyof EditForm, label: string, type = 'text', placeholder = '') => (
@@ -415,6 +425,16 @@ function EditUserModal({
           <div className="grid grid-cols-2 gap-4">
             {field('full_name', 'Full Name')}
             {field('username',  'Username')}
+            <div className="col-span-2">
+              <label className="label">Email Address</label>
+              <input
+                className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                type="email"
+                placeholder="user@example.com"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
             <div>
               <label className="label">Role</label>
               <select 
@@ -484,7 +504,7 @@ function EditUserModal({
         )}
       </AnimatePresence>
 
-      {/* Security Question sub-dialog */}
+{/* Security Question sub-dialog */}
       <AnimatePresence>
         {showSecurityDialog && (
           <SecurityQuestionDialog
@@ -493,6 +513,55 @@ function EditUserModal({
             onConfirm={(question, answer) => updateSecurity.mutate({ question, answer })}
             isPending={updateSecurity.isPending}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Confirm Save dialog */}
+      <AnimatePresence>
+        {showConfirmDialog && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmDialog(false)}
+            />
+            <motion.div
+              className="relative z-10 card p-6 w-full max-w-sm"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={{   opacity: 0, scale: 0.95, y: 10  }}
+              transition={{ duration: 0.15 }}
+            >
+              <h3 className="font-bold text-base text-text-primary mb-1">Confirm Changes</h3>
+              <p className="text-xs text-text-muted mb-4">
+                Are you sure you want to save the changes made to{' '}
+                <span className="font-medium text-text-secondary">{user.full_name}</span>?
+              </p>
+              <div className="text-xs text-text-muted bg-bg-input rounded-lg p-3 mb-5 space-y-1">
+                {pendingPayload?.full_name && <p>• Full Name → <span className="text-text-primary">{pendingPayload.full_name}</span></p>}
+                {pendingPayload?.username  && <p>• Username → <span className="text-text-primary">{pendingPayload.username}</span></p>}
+                {pendingPayload?.email     && <p>• Email → <span className="text-text-primary">{pendingPayload.email}</span></p>}
+                {pendingPayload?.role      && <p>• Role → <span className="text-text-primary">{pendingPayload.role}</span></p>}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  className="btn-primary text-sm flex items-center gap-2"
+                  onClick={handleConfirmSave}
+                  disabled={updateFields.isPending}
+                >
+                  <Save size={13} />
+                  {updateFields.isPending ? 'Saving...' : 'Confirm'}
+                </button>
+                <button
+                  className="btn-ghost text-sm"
+                  onClick={() => setShowConfirmDialog(false)}
+                  disabled={updateFields.isPending}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>
@@ -509,7 +578,7 @@ function UserList({ qc }: { qc: any }) {
   const [limit,    setLimit]    = useState(10);
   const [form, setForm] = useState({
     username: '', password: '', role: 'encoder',
-    full_name: '', security_question: '', security_answer: '',
+    full_name: '', email: '', security_question: '', security_answer: '',
   });
 
   const { data, isLoading } = useQuery({
@@ -545,7 +614,7 @@ function UserList({ qc }: { qc: any }) {
       qc.invalidateQueries({ queryKey: ['users'] });
       toast.success(`User created! Employee ID: ${res.data.id}`);
       setShowForm(false);
-      setForm({ username: '', password: '', role: 'encoder', full_name: '', security_question: '', security_answer: '' });
+      setForm({ username: '', password: '', role: 'encoder', full_name: '', email: '', security_question: '', security_answer: '' });
     },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed.'),
   });
@@ -585,10 +654,11 @@ function UserList({ qc }: { qc: any }) {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5 mb-5">
           <h3 className="font-bold text-base text-text-primary mb-4">New User</h3>
           <div className="grid grid-cols-2 gap-4">
-            {([
-              ['full_name', 'Full Name', 'text'],
-              ['username',  'Username',  'text'],
-              ['password',  'Password',  'password'],
+            { ([
+              ['full_name', 'Full Name',     'text'],
+              ['username',  'Username',      'text'],
+              ['password',  'Password',      'password'],
+              ['email',     'Email Address', 'email'],
             ] as [string, string, string][]).map(([k, l, t]) => (
               <div key={k}>
                 <label className="label">{l}</label>

@@ -26,7 +26,7 @@ export async function getUsers(request, reply) {
     );
 
     const [rows] = await db.execute(
-      `SELECT id, username, role, full_name, is_active, last_login, created_at
+      `SELECT id, username, role, full_name, email, is_active, last_login, created_at
        FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, limitNum, offset]
     );
@@ -44,7 +44,7 @@ export async function getUsers(request, reply) {
 }
 
 export async function createUser(request, reply) {
-  const { username, password, role, full_name, security_question, security_answer } = request.body;
+  const { username, password, role, full_name, email, security_question, security_answer } = request.body;
   if (!username || !password || !full_name) {
     return reply.code(400).send({ success: false, message: 'Username, password, and full name are required.' });
   }
@@ -59,10 +59,10 @@ export async function createUser(request, reply) {
     const answerHash = security_answer ? await bcrypt.hash(security_answer.toLowerCase().trim(), 10) : null;
 
     await db.execute(
-      `INSERT INTO users (id, username, password_hash, role, full_name, security_question, security_answer_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, username, password_hash, role, full_name, email, security_question, security_answer_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [employeeId, username, hash, role || 'encoder', full_name,
-       security_question || null, answerHash]
+       email || null, security_question || null, answerHash]
     );
 
     await db.execute(
@@ -114,7 +114,7 @@ export async function toggleUserStatus(request, reply) {
 
 export async function updateUser(request, reply) {
   const { id } = request.params;
-  const { username, password, full_name, role, security_question, security_answer } = request.body;
+  const { username, password, full_name, email, role, security_question, security_answer } = request.body;
 
   try {
     const [[target]] = await db.execute(
@@ -155,6 +155,11 @@ export async function updateUser(request, reply) {
     if (full_name)  { fields.push('full_name = ?');   params.push(full_name); }
     if (username)   { fields.push('username = ?');    params.push(username); }
     if (role)       { fields.push('role = ?');        params.push(role); }
+
+    if (email !== undefined) {
+      fields.push('email = ?');
+      params.push(email || null);
+    }
 
     if (password) {
       const hash = await bcrypt.hash(password, 10);
