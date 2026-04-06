@@ -425,16 +425,18 @@ function handleSave() {
           <div className="grid grid-cols-2 gap-4">
             {field('full_name', 'Full Name')}
             {field('username',  'Username')}
-            <div className="col-span-2">
-              <label className="label">Email Address</label>
-              <input
-                className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
-                type="email"
-                placeholder="user@example.com"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-              />
-            </div>
+            {form.role === 'admin' && (
+              <div className="col-span-2">
+                <label className="label">Email Address</label>
+                <input
+                  className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+            )}
             <div>
               <label className="label">Role</label>
               <select 
@@ -654,22 +656,32 @@ function UserList({ qc }: { qc: any }) {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5 mb-5">
           <h3 className="font-bold text-base text-text-primary mb-4">New User</h3>
           <div className="grid grid-cols-2 gap-4">
-            { ([
-              ['full_name', 'Full Name',     'text'],
-              ['username',  'Username',      'text'],
-              ['password',  'Password',      'password'],
-              ['email',     'Email Address', 'email'],
-            ] as [string, string, string][]).map(([k, l, t]) => (
-              <div key={k}>
-                <label className="label">{l}</label>
-                <input 
-                  className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
-                  type={t} 
-                  value={(form as any)[k]}
-                  onChange={e => setForm({ ...form, [k]: e.target.value })} 
-                />
-              </div>
-            ))}
+          { ([
+            ['full_name', 'Full Name', 'text'],
+            ['username',  'Username',  'text'],
+            ['password',  'Password',  'password'],
+          ] as [string, string, string][]).map(([k, l, t]) => (
+            <div key={k}>
+              <label className="label">{l}</label>
+              <input 
+                className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" 
+                type={t} 
+                value={(form as any)[k]}
+                onChange={e => setForm({ ...form, [k]: e.target.value })} 
+              />
+            </div>
+          ))}
+          {form.role === 'admin' && (
+            <div>
+              <label className="label">Email Address</label>
+              <input
+                className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all"
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+          )}
             <div>
               <label className="label">Role</label>
               <select 

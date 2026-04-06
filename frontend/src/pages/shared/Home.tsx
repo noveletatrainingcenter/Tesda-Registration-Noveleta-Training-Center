@@ -262,9 +262,9 @@ export default function Home() {
   });
 
   // Theme-aware styling
-  const tooltipBg = theme === 'dark' ? '#1a2133' : '#ffffff';
-  const tooltipBorder = theme === 'dark' ? '#1e2d3d' : '#e2e8f0';
-  const tooltipColor = theme === 'dark' ? '#f0f6ff' : '#0f172a';
+  const tooltipBg = theme === 'dark' ? '#1e2d3d' : '#ffffff';
+  const tooltipBorder = theme === 'dark' ? '#334155' : '#e2e8f0';
+  const tooltipColor = theme === 'dark' ? '#f1f5f9' : '#0f172a';
   const gridColor = theme === 'dark' ? '#1e2d3d' : '#e2e8f0';
 
   const tooltipStyle = {
@@ -276,6 +276,9 @@ export default function Home() {
     padding: '8px 12px',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
   };
+
+  const tooltipLabelStyle = { color: tooltipColor };
+  const tooltipItemStyle = { color: tooltipColor };
 
   // Prepare chart data
   const monthlyData = (stats?.monthly || []).map((m: any) => ({
@@ -734,9 +737,9 @@ export default function Home() {
                     <Loader2 size={32} className="animate-spin text-accent" />
                 </div>
                 ) : employmentData.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex justify-center">
                     {/* Chart */}
-                    <div className="h-[250px]">
+                    <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                         <Pie
@@ -757,27 +760,9 @@ export default function Home() {
                             <Cell key={`cell-${i}`} fill={entry.color} />
                             ))}
                         </Pie>
-                        <Tooltip contentStyle={tooltipStyle} />
+                        <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                         </PieChart>
                     </ResponsiveContainer>
-                    </div>
-                    
-                    {/* Legend */}
-                    <div className="space-y-3">
-                    {employmentData.map((item) => (
-                        <div key={item.name} className="flex items-center justify-between p-3 rounded-lg bg-bg-input/50">
-                        <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
-                            <span className="text-sm text-text-secondary">{item.name}</span>
-                        </div>
-                        <div className="text-right">
-                            <span className="font-semibold text-text-primary">{item.value}</span>
-                            <span className="text-xs text-text-muted ml-2">
-                            ({calculatePercentage(item.value, totalRegistrations)}%)
-                            </span>
-                        </div>
-                        </div>
-                    ))}
                     </div>
                 </div>
                 ) : (
@@ -848,7 +833,7 @@ export default function Home() {
               >
                 {/* Header */}
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 rounded-lg bg-accent/10">
                       <BarChart3 size={20} className="text-accent" />
                     </div>
