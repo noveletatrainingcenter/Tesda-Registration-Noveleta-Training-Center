@@ -8,7 +8,7 @@ import cron from 'node-cron';
 import db from '../../config/db.js';
 
 const execAsync = promisify(exec);
-const BACKUP_DIR = path.resolve(process.env.BACKUP_DIR || path.join(process.cwd(), '../backups/Tesda-Registration-Backups'));
+const BACKUP_DIR = path.resolve(process.cwd(), process.env.BACKUP_DIR || '../backups/Tesda-Registration-Backups');
 
 // Ensure backup dir exists
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });

@@ -1,11 +1,14 @@
 // backend/src/index.js
 import dotenv from 'dotenv';
-dotenv.config(); // ← MUST be before all other imports so env vars are available
+dotenv.config();
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { testConnection } from './config/db.js';
 
 // Shared routes
@@ -21,6 +24,9 @@ import userRoutes from './routes/admin/users.routes.js';
 import auditRoutes from './routes/admin/audit.routes.js';
 import backupRoutes from './routes/admin/backup.routes.js';
 import { loadAndStartScheduler } from './controllers/admin/backup.controller.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({ logger: true });
 
@@ -41,9 +47,9 @@ await fastify.register(cookie);
 await fastify.register(authRoutes,          { prefix: '/api/auth' });
 await fastify.register(accountRoutes,       { prefix: '/api/account' });
 await fastify.register(registrationRoutes,  { prefix: '/api/registrations' });
-await fastify.register(courseRoutes,        { prefix: '/api/courses' })
-await fastify.register(sectorRoutes, { prefix: '/api/sectors' });
-await fastify.register(reportRoutes,  { prefix: '/api/reports' }); 
+await fastify.register(courseRoutes,        { prefix: '/api/courses' });
+await fastify.register(sectorRoutes,        { prefix: '/api/sectors' });
+await fastify.register(reportRoutes,        { prefix: '/api/reports' });
 
 // ── Admin routes ──────────────────────────────────────────────────────────
 await fastify.register(userRoutes,   { prefix: '/api/admin/users' });
@@ -52,6 +58,17 @@ await fastify.register(backupRoutes, { prefix: '/api/admin/backups' });
 
 // ── Health check ──────────────────────────────────────────────────────────
 fastify.get('/api/health', async () => ({ status: 'ok', time: new Date().toISOString() }));
+
+// ── Serve frontend static files (production) ──────────────────────────────
+await fastify.register(fastifyStatic, {
+  root: path.join(__dirname, '../../frontend/dist'),
+  prefix: '/',
+});
+
+// ── Catch-all for React Router ────────────────────────────────────────────
+fastify.setNotFoundHandler((request, reply) => {
+  reply.sendFile('index.html');
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────
 const start = async () => {
