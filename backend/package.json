@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "install-system": "apt-get install -y mysql-client 2>/dev/null || true",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -23,6 +24,7 @@
     "dotenv": "^17.3.1",
     "fastify": "^5.7.4",
     "mysql2": "^3.18.2",
+    "mysqldump": "^3.2.0",
     "node-cron": "^4.2.1",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
