@@ -151,7 +151,7 @@ export async function generateEncoderTicket(request, reply) {
     if (!rows.length) return reply.code(404).send({ success: false, message: 'Encoder not found.' });
 
     const ticket = generateResetTicket();
-    const expires = dayjs().add(24, 'hour').toDate();
+    const expires = dayjs().add(15, 'minute').toDate();
 
     await db.execute(
       'UPDATE users SET reset_ticket = ?, ticket_expires_at = ?, ticket_used = FALSE WHERE id = ?',
@@ -163,7 +163,7 @@ export async function generateEncoderTicket(request, reply) {
       [request.user.id, request.user.full_name, 'GENERATE_RESET_TICKET', 'Auth', `Reset ticket issued for encoder: ${rows[0].full_name}`, request.ip]
     );
 
-    return reply.send({ success: true, ticket, encoder_name: rows[0].full_name, expires_in: '24 hours' });
+    return reply.send({ success: true, ticket, encoder_name: rows[0].full_name, expires_in: '15 minutes' });
   } catch (err) {
     return reply.code(500).send({ success: false, message: 'Server error.' });
   }

@@ -5,7 +5,7 @@ import { useThemeStore } from './store/themeStore';
 import WelcomePage from './pages/Welcome';
 import LoginPage from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
-import Home from './pages/shared/Home'; // ← Changed to shared Home
+import Home from './pages/shared/Home';
 import UserManagement from './pages/admin/Settings/UserManagement';
 import BackupRestore from './pages/admin/Settings/Backup&Restore';
 import AuditTrail from './pages/admin/Settings/AuditTrail';
@@ -21,7 +21,6 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 
   return <>{children}</>;
 }
 
-// If already logged in, skip Welcome and go straight to dashboard
 function HomeRedirect() {
   const { isAuthenticated, user } = useAuthStore();
   if (isAuthenticated && user) {
@@ -30,7 +29,6 @@ function HomeRedirect() {
   return <WelcomePage />;
 }
 
-// If already logged in, skip Login and go straight to dashboard
 function LoginRedirect() {
   const { isAuthenticated, user } = useAuthStore();
   if (isAuthenticated && user) {
@@ -49,7 +47,7 @@ export default function App() {
 
         {/* Admin */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><DashboardLayout /></ProtectedRoute>}>
-          <Route index element={<Home />} /> {/* ← Now using shared Home */}
+          <Route index element={<Home />} />
           <Route path="applicants"     element={<Applicants />} />
           <Route path="applicants/:id" element={<Applicants />} />
           <Route path="courses"        element={<Courses />} />
@@ -61,11 +59,12 @@ export default function App() {
 
         {/* Encoder */}
         <Route path="/encoder" element={<ProtectedRoute role="encoder"><DashboardLayout /></ProtectedRoute>}>
-          <Route index element={<Home />} /> {/* ← Now using shared Home */}
+          <Route index element={<Home />} />
           <Route path="applicants"     element={<Applicants />} />
           <Route path="applicants/:id" element={<Applicants />} />
           <Route path="courses"        element={<Courses />} />
           <Route path="reports"        element={<Reports />} />
+          <Route path="backup"         element={<BackupRestore />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

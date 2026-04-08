@@ -2,12 +2,67 @@
   "name": "tesda-registration-system",
   "version": "1.0.0",
   "private": true,
+  "main": "electron/main.js",
+  "description": "TESDA NTC Registration System",
+  "author": "TESDA Noveleta Training Center",
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,green\" \"cmd /c npm run dev --prefix backend\" \"cmd /c npm run dev --prefix frontend\"",
     "install:all": "cmd /c npm install --prefix frontend && cmd /c npm install --prefix backend",
-    "build": "cmd /c npm run build --prefix frontend"
+    "build:frontend": "cd frontend && npm run build",
+    "rebuild:backend": "cd backend && npm install --omit=dev",
+    "dist": "npm run build:frontend && npm run rebuild:backend && electron-builder",
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.tesdantc.registration",
+    "productName": "TESDA NTC Registration",
+    "directories": {
+      "buildResources": "electron/assets",
+      "output": "release"
+    },
+    "files": [
+      "electron/**"
+    ],
+    "extraResources": [
+      {
+        "from": "frontend/dist",
+        "to": "frontend_dist"
+      },
+      {
+        "from": "backend/src",
+        "to": "backend/src"
+      },
+      {
+        "from": "backend/node_modules",
+        "to": "backend/node_modules"
+      },
+      {
+        "from": "backend/package.json",
+        "to": "backend/package.json"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "electron/LOGO.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TESDA NTC Registration",
+      "uninstallDisplayName": "TESDA NTC Registration",
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1"
   }
 }

@@ -347,22 +347,24 @@ export default function LoginPage() {
                     </button>
                   )}
 
-                  {/* Email OTP — all roles */}
-                  <button
-                    className="w-full text-left p-4 rounded-xl border border-border bg-bg-input hover:border-accent hover:bg-accent/5 transition-all group"
-                    onClick={() => { setStep('forgot-otp'); setOtpStep('send'); setOtpEmailInput(''); setError(''); }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
-                        <CheckCircle size={16} className="text-accent" />
+                  {/* Email OTP — only for admin (hidden for encoder) */}
+                  {role !== 'encoder' && (
+                    <button
+                      className="w-full text-left p-4 rounded-xl border border-border bg-bg-input hover:border-accent hover:bg-accent/5 transition-all group"
+                      onClick={() => { setStep('forgot-otp'); setOtpStep('send'); setOtpEmailInput(''); setError(''); }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
+                          <CheckCircle size={16} className="text-accent" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">Email OTP</p>
+                          <p className="text-xs text-text-muted mt-0.5">Receive a one-time code on your email</p>
+                        </div>
+                        <ArrowRight size={14} className="text-text-muted ml-auto group-hover:text-accent transition-colors" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-primary">Email OTP</p>
-                        <p className="text-xs text-text-muted mt-0.5">Receive a one-time code on your email</p>
-                      </div>
-                      <ArrowRight size={14} className="text-text-muted ml-auto group-hover:text-accent transition-colors" />
-                    </div>
-                  </button>
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -634,7 +636,7 @@ export default function LoginPage() {
               </motion.div>
             )}
 
-            {/* OTP RECOVERY - ALL ROLES */}
+            {/* OTP RECOVERY - ADMIN ONLY (hidden for encoder) */}
             {step === 'forgot-otp' && (
               <motion.div key="forgot-otp" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.3 }}>
 

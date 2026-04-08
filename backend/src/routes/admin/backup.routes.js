@@ -1,23 +1,28 @@
+// backend/src/routes/admin/backup.routes.js
 import {
-  listBackups, createBackup, downloadBackup,
-  deleteBackup, restoreBackup, getSchedule, saveSchedule,
+  listBackups, createBackup, downloadBackup, deleteBackup,
+  restoreBackup, previewImport, confirmImport, getSchedule, saveSchedule,
 } from '../../controllers/admin/backup.controller.js';
 import { authenticate, requireRole } from '../../middleware/auth.middleware.js';
-import multipart from '@fastify/multipart';
 
-export default async function backupRoutes(fastify) {
-  const admin = { preHandler: [authenticate, requireRole('admin')] };
+// Shared routes — authenticated users (admin + encoder)
+export default async function backupRoutes(fastify, _opts) {
+  fastify.addHook('onRequest', authenticate);
 
-  fastify.get('/',                   admin, listBackups);
-  fastify.post('/',                  admin, createBackup);
-  fastify.get('/schedule',           admin, getSchedule);
-  fastify.post('/schedule',          admin, saveSchedule);
-  fastify.get('/download/:filename', admin, downloadBackup);
-  fastify.delete('/:filename',       admin, deleteBackup);
+  fastify.get('/',                listBackups);
+  fastify.post('/',               createBackup);   // ← encoders can also create backups
+  fastify.get('/download/*',      downloadBackup);
+  fastify.get('/schedule',        getSchedule);
+  fastify.post('/preview-import', previewImport);
+  fastify.post('/confirm-import', confirmImport);
+}
 
-  // Register multipart ONLY for this route scope
-  await fastify.register(async function (instance) {
-    await instance.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
-    instance.post('/restore', { preHandler: [authenticate, requireRole('admin')] }, restoreBackup);
-  });
+// Admin-only routes
+export async function adminOnlyBackupRoutes(fastify, _opts) {
+  fastify.addHook('onRequest', authenticate);
+  fastify.addHook('onRequest', requireRole('admin'));
+
+  fastify.delete('/delete/*', deleteBackup);
+  fastify.post('/schedule',   saveSchedule);
+  fastify.post('/restore',    restoreBackup);
 }

@@ -29,11 +29,16 @@ const adminSettingsNav = [
   { to: '/admin/backup',  icon: DatabaseBackup,  label: 'Backup & Restore'},
 ];
 
+const encoderSettingsNav = [
+  { to: '/encoder/backup', icon: DatabaseBackup, label: 'Backup & Restore' },
+];
+
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const user      = useAuthStore(state => state.user);
   const clearAuth = useAuthStore(state => state.clearAuth);
   const navigate  = useNavigate();
   const navItems  = user?.role === 'admin' ? adminNav : encoderNav;
+  const settingsNav = user?.role === 'admin' ? adminSettingsNav : encoderSettingsNav;
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -103,40 +108,39 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
               </NavLink>
             ))}
 
-            {user?.role === 'admin' && (
-              <div ref={settingsRef}>
-                <button
-                  onClick={() => setSettingsOpen(prev => !prev)}
-                  className={clsx('sidebar-link w-full', settingsOpen && 'active')}
-                >
-                  <Settings size={17} />
-                  <span className="flex-1 text-left">Settings</span>
-                  <ChevronUp
-                    size={14}
-                    className={clsx(
-                      'transition-transform duration-200 text-white/40',
-                      settingsOpen ? 'rotate-0' : 'rotate-180'
-                    )}
-                  />
-                </button>
+            {/* Settings dropdown — visible to both admin and encoder */}
+            <div ref={settingsRef}>
+              <button
+                onClick={() => setSettingsOpen(prev => !prev)}
+                className={clsx('sidebar-link w-full', settingsOpen && 'active')}
+              >
+                <Settings size={17} />
+                <span className="flex-1 text-left">Settings</span>
+                <ChevronUp
+                  size={14}
+                  className={clsx(
+                    'transition-transform duration-200 text-white/40',
+                    settingsOpen ? 'rotate-0' : 'rotate-180'
+                  )}
+                />
+              </button>
 
-                {settingsOpen && (
-                  <div className="mt-1 ml-4 flex flex-col gap-1 border-l border-white/10 pl-3">
-                    {adminSettingsNav.map(({ to, icon: Icon, label }) => (
-                      <NavLink
-                        key={to}
-                        to={to}
-                        onClick={onClose}
-                        className={({ isActive }) => clsx('sidebar-link', isActive && 'active')}
-                      >
-                        <Icon size={16} />
-                        <span>{label}</span>
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              {settingsOpen && (
+                <div className="mt-1 ml-4 flex flex-col gap-1 border-l border-white/10 pl-3">
+                  {settingsNav.map(({ to, icon: Icon, label }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      onClick={onClose}
+                      className={({ isActive }) => clsx('sidebar-link', isActive && 'active')}
+                    >
+                      <Icon size={16} />
+                      <span>{label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </nav>
 

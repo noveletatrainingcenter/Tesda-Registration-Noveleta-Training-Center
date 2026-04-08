@@ -843,6 +843,7 @@ function ResetTickets() {
   const [encoderId, setEncoderId] = useState('');
   const [ticket, setTicket]       = useState('');
   const [loading, setLoading]     = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const { data: usersData } = useQuery({
     queryKey: ['users-all-encoders'],
@@ -850,10 +851,11 @@ function ResetTickets() {
   });
 
   const encoders = (usersData?.data || []).filter((u: any) => u.role === 'encoder' && u.is_active);
+  const selectedEncoder = encoders.find((u: any) => u.id === encoderId);
 
   async function handleGenerate() {
-    if (!encoderId) return toast.error('Select an encoder.');
     setLoading(true);
+    setShowConfirm(false);
     try {
       const { data } = await api.post('/auth/reset-ticket/generate', { encoder_id: encoderId });
       setTicket(data.ticket);
@@ -864,50 +866,113 @@ function ResetTickets() {
   }
 
   return (
-    <div className="max-w-md">
-      <div className="card p-6">
-        <h3 className="font-bold text-lg text-text-primary mb-1">Generate Reset Ticket</h3>
-        <p className="text-sm text-text-muted mb-5">
-          Create an 8-character ticket for an encoder. Valid for 24 hours.
-          Send it manually via chat or message.
-        </p>
-        <label className="label">Select Encoder</label>
-        <select 
-          className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none mb-4"
-          value={encoderId}
-          onChange={e => { setEncoderId(e.target.value); setTicket(''); }}
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 1rem center',
-            backgroundSize: '16px'
-          }}
-        >
-          <option value="">— Choose encoder —</option>
-          {encoders.map((u: any) => (
-            <option key={u.id} value={u.id}>{u.full_name} ({u.username})</option>
-          ))}
-        </select>
-        <button className="btn-primary w-full justify-center h-10" onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Generating...' : <><Key size={15} /> Generate Ticket</>}
-        </button>
+    <>
+      <div className="max-w-md">
+        <div className="card p-6">
+          <h3 className="font-bold text-lg text-text-primary mb-1">Generate Reset Ticket</h3>
+          <p className="text-sm text-text-muted mb-5">
+            Create an 8-character ticket for an encoder. Expires in{' '}
+            <span className="font-medium text-text-primary">15 minutes</span> if unused.
+            Send it manually via chat or message.
+          </p>
 
-        {ticket && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5">
-            <div className="p-4 rounded-xl bg-bg-input border border-border text-center">
-              <div className="text-xs text-text-muted mb-2">Reset Ticket (valid 24h)</div>
-              <div className="font-mono text-2xl font-bold tracking-widest text-text-primary mb-4">{ticket}</div>
-              <button className="btn-primary text-sm h-10 px-4"
-                onClick={() => { navigator.clipboard.writeText(ticket); toast.success('Copied!'); }}>
-                <Copy size={14} /> Copy Ticket
-              </button>
-            </div>
-            <p className="text-xs mt-3 text-center text-text-muted">
-              Send this ticket to the encoder via Messenger, Viber, or SMS.
-            </p>
-          </motion.div>
-        )}
+          <label className="label">Select Encoder</label>
+          <select
+            className="w-full h-10 px-4 rounded-lg border border-border bg-bg-input text-text-primary text-sm focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all cursor-pointer appearance-none mb-4"
+            value={encoderId}
+            onChange={e => { setEncoderId(e.target.value); setTicket(''); }}
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 1rem center',
+              backgroundSize: '16px',
+            }}
+          >
+            <option value="">— Choose encoder —</option>
+            {encoders.map((u: any) => (
+              <option key={u.id} value={u.id}>{u.full_name} ({u.username})</option>
+            ))}
+          </select>
+
+          <button
+            className="btn-primary w-full justify-center h-10"
+            onClick={() => {
+              if (!encoderId) return toast.error('Select an encoder.');
+              setShowConfirm(true);
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Generating...' : <><Key size={15} /> Generate Ticket</>}
+          </button>
+
+          {ticket && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5">
+              <div className="p-4 rounded-xl bg-bg-input border border-border text-center">
+                <div className="text-xs text-text-muted mb-2">Reset Ticket (expires in 15 min if unused)</div>
+                <div className="font-mono text-2xl font-bold tracking-widest text-text-primary mb-4">{ticket}</div>
+                <button
+                  className="btn-primary text-sm h-10 px-4"
+                  onClick={() => { navigator.clipboard.writeText(ticket); toast.success('Copied!'); }}
+                >
+                  <Copy size={14} /> Copy Ticket
+                </button>
+              </div>
+              <p className="text-xs mt-3 text-center text-text-muted">
+                Send this ticket to the encoder via Messenger, Viber, or SMS.
+              </p>
+            </motion.div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Confirm Dialog — outside the max-w-md container so it overlays the full screen */}
+      <AnimatePresence>
+        {showConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowConfirm(false)}
+            />
+            <motion.div
+              className="relative z-10 card p-6 w-full max-w-sm"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={{   opacity: 0, scale: 0.95, y: 10  }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="flex items-start justify-between mb-1">
+                <h3 className="font-bold text-base text-text-primary">Generate Reset Ticket</h3>
+                <button className="btn-ghost p-1.5" onClick={() => setShowConfirm(false)} disabled={loading}>
+                  <X size={15} />
+                </button>
+              </div>
+              <p className="text-xs text-text-muted mb-5">
+                Generate a reset ticket for{' '}
+                <span className="font-medium text-text-secondary">{selectedEncoder?.full_name}</span>?
+                The ticket will expire in{' '}
+                <span className="font-medium text-text-primary">15 minutes</span> if unused.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  className="btn-primary text-sm flex items-center gap-2"
+                  onClick={handleGenerate}
+                  disabled={loading}
+                >
+                  <Key size={13} /> {loading ? 'Generating...' : 'Confirm'}
+                </button>
+                <button
+                  className="btn-ghost text-sm"
+                  onClick={() => setShowConfirm(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

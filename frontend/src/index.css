@@ -30,8 +30,8 @@
   --bg-sidebar-hover: #243044;
   --bg-input: #f1f5f9;
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-secondary: #475569;   /* readable body text */
+  --text-muted: #64748b;       /* raised from #94a3b8 — still subdued but legible */
   --text-sidebar: #cbd5e1;
   --text-sidebar-active: #ffffff;
   --border: #e2e8f0;
@@ -51,11 +51,11 @@
   --bg-sidebar-hover: #161b27;
   --bg-input: #1e2d3d;
   --text-primary: #f0f6ff;
-  --text-secondary: #8b9fc7;
-  --text-muted: #4a5a7a;
+  --text-secondary: #b8cce8;   /* raised from #8b9fc7 — comfortably readable on dark cards */
+  --text-muted: #7a90b8;       /* raised from #4a5a7a — was near-invisible, now meets contrast */
   --text-sidebar: #8b9fc7;
   --text-sidebar-active: #ffffff;
-  --border: #1e2d3d;
+  --border: #253248;           /* slightly lighter than bg-input so borders are visible */
   --accent: #22c55e;
   --accent-hover: #4ade80;
   --accent-light: #052e16;
@@ -375,6 +375,14 @@ select.input-base:not(.custom-select) {
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
 }
+
+/* ============ ALERT / BANNER UTILITIES ============ */
+/* Used in banners, advisories, info boxes throughout the app */
+/* Higher-opacity backgrounds so they're actually visible in dark mode */
+.alert-info    { background: rgb(59 130 246 / 0.12); border: 1px solid rgb(59 130 246 / 0.35); }
+.alert-warning { background: rgb(245 158 11 / 0.12); border: 1px solid rgb(245 158 11 / 0.35); }
+.alert-danger  { background: rgb(239 68 68  / 0.12); border: 1px solid rgb(239 68 68  / 0.35); }
+.alert-neutral { background: var(--bg-input);        border: 1px solid var(--border); }
 
 /* ============ WELCOME / LOGIN BACKGROUND ============ */
 .welcome-bg {
